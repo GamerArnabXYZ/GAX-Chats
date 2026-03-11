@@ -1100,7 +1100,7 @@ class ProfileTab extends StatelessWidget {
               iconGrad: const LinearGradient(colors: [Color(0xFF4B3ECC), Gx.violet]),
               title: 'Auto Theme',
               subtitle: tc.auto
-                ? (tc.autoMode == AutoThemeMode.system ? 'Follows phone's dark mode' : 'Changes by time of day')
+                ? (tc.autoMode == AutoThemeMode.system ? "Follows phone's dark mode" : "Changes by time of day")
                 : 'Manual',
               trailing: Switch.adaptive(value: tc.auto, onChanged: tc.setAuto, activeColor: Gx.violet,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
@@ -1113,8 +1113,8 @@ class ProfileTab extends StatelessWidget {
                 _PrefRow(
                   icon: Icons.phone_android_rounded,
                   iconGrad: const LinearGradient(colors: [Color(0xFF00509D), Color(0xFF00AAFF)]),
-                  title: 'Follow Phone's Mode',
-                  subtitle: 'Uses your phone's dark/light setting',
+                  title: "Follow Phone's Mode",
+                  subtitle: "Uses your phone's dark/light setting",
                   trailing: _RadioDot(selected: tc.autoMode == AutoThemeMode.system),
                   onTap: () => tc.setAutoMode(AutoThemeMode.system),
                   dark: dark,
