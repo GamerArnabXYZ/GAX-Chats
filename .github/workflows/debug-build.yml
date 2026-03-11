@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-debug:
     name: Build Debug APK
@@ -37,18 +40,20 @@ jobs:
       - name: 🔨 Build Split Debug APK
         run: flutter build apk --debug --split-per-abi
 
-      - name: 📤 Upload ARM64 APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-apk-arm64
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
-          retention-days: 7
-          compression-level: 0
+      - name: 🏷️ Delete Old Release
+        run: |
+          gh release delete debug-latest --yes || true
+          git push origin --delete debug-latest || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 📤 Upload ARM32 APK
-        uses: actions/upload-artifact@v4
+      - name: 🚀 Create Release with Direct APK
+        uses: softprops/action-gh-release@v2
         with:
-          name: debug-apk-arm32
-          path: build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk
-          retention-days: 7
-          compression-level: 0
+          tag_name: debug-latest
+          name: "🔨 Debug APK (Latest)"
+          body: "Auto-built debug APK — direct download!"
+          prerelease: true
+          files: |
+            build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+            build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk
