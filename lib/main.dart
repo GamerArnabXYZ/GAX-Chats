@@ -142,25 +142,55 @@ ThemeData gaxTheme(bool dark) {
 // ═══════════════════════════════════════════════════
 //  THEME CONTROLLER  — auto + manual
 // ═══════════════════════════════════════════════════
+// Auto mode options
+enum AutoThemeMode { system, timeBased, systemAndTime }
+
 class ThemeCtrl extends ChangeNotifier {
   ThemeMode _mode = ThemeMode.system;
   bool _auto = true;
+  AutoThemeMode _autoMode = AutoThemeMode.system;
   Timer? _autoTimer;
 
   ThemeMode get mode => _mode;
   bool get auto => _auto;
+  AutoThemeMode get autoMode => _autoMode;
+
   bool get isDarkNow {
     if (_mode == ThemeMode.dark) return true;
     if (_mode == ThemeMode.light) return false;
-    final h = DateTime.now().hour;
-    return h < 6 || h >= 19;
+    // system mode - read actual platform brightness
+    return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
   }
 
-  ThemeCtrl() { _startAutoCheck(); }
+  ThemeCtrl() {
+    // Listen to system brightness changes (phone night mode, auto-brightness)
+    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = _onSystemBrightnessChanged;
+    _startAutoCheck();
+  }
+
+  void _onSystemBrightnessChanged() {
+    if (!_auto || _autoMode == AutoThemeMode.timeBased) return;
+    notifyListeners();
+  }
 
   void setAuto(bool v) {
     _auto = v;
-    if (v) { _mode = ThemeMode.system; _applyTimeTheme(); }
+    if (v) {
+      _autoMode = AutoThemeMode.system;
+      _mode = ThemeMode.system;
+      _applyAuto();
+    }
+    notifyListeners();
+  }
+
+  void setAutoMode(AutoThemeMode m) {
+    _auto = true;
+    _autoMode = m;
+    if (m == AutoThemeMode.timeBased) {
+      _applyTimeTheme();
+    } else {
+      _mode = ThemeMode.system;
+    }
     notifyListeners();
   }
 
@@ -168,6 +198,15 @@ class ThemeCtrl extends ChangeNotifier {
     _auto = false;
     _mode = v ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
+  }
+
+  void _applyAuto() {
+    if (!_auto) return;
+    if (_autoMode == AutoThemeMode.timeBased) {
+      _applyTimeTheme();
+    } else {
+      _mode = ThemeMode.system;
+    }
   }
 
   void _applyTimeTheme() {
@@ -179,12 +218,18 @@ class ThemeCtrl extends ChangeNotifier {
   }
 
   void _startAutoCheck() {
-    _applyTimeTheme();
-    _autoTimer = Timer.periodic(const Duration(minutes: 5), (_) { if (_auto) _applyTimeTheme(); });
+    _applyAuto();
+    _autoTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (_auto && _autoMode == AutoThemeMode.timeBased) _applyTimeTheme();
+    });
   }
 
   @override
-  void dispose() { _autoTimer?.cancel(); super.dispose(); }
+  void dispose() {
+    _autoTimer?.cancel();
+    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = null;
+    super.dispose();
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -192,6 +237,7 @@ class ThemeCtrl extends ChangeNotifier {
 // ═══════════════════════════════════════════════════
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   await Firebase.initializeApp(
     options: const FirebaseOptions(
       apiKey: "AIzaSyCDxsFZBoEG-WJkN-2wuD_U5DCotgEXZkc",
@@ -229,8 +275,11 @@ class _GaxAppState extends State<GaxApp> {
   void _updateSystemUI(bool dark) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
+      statusBarBrightness: dark ? Brightness.dark : Brightness.light,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: dark ? Gx.navD : Gx.navL,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: false,
       systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
     ));
   }
@@ -331,8 +380,11 @@ class _LoginState extends State<LoginScreen> with TickerProviderStateMixin {
   @override void dispose() { _emailC.dispose(); _passC.dispose(); _bgAc.dispose(); _entAc.dispose(); super.dispose(); }
 
   Future<void> _auth() async {
-    if (_emailC.text.trim().isEmpty || _passC.text.trim().isEmpty) { setState(() => _err = 'Enter email and password'); return; }
-    setState(() { _busy = true; _err = null; });
+    if (_emailC.text.trim().isEmpty || _passC.text.trim().isEmpty) {
+      if (mounted) setState(() => _err = 'Enter email and password');
+      return;
+    }
+    if (mounted) setState(() { _busy = true; _err = null; });
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: _emailC.text.trim(), password: _passC.text.trim());
     } catch (_) {
@@ -753,7 +805,9 @@ class ChatsTab extends StatelessWidget {
     builder: (ctx, snap) {
       if (!snap.hasData || snap.data!.snapshot.value == null)
         return _emptyView(Icons.chat_bubble_outline_rounded, 'No Conversations', 'Find friends and start chatting');
-      final ids = (snap.data!.snapshot.value as Map).keys.toList();
+      final rawMap = snap.data!.snapshot.value as Map? ?? {};
+      final ids = rawMap.keys.map((k) => k.toString()).toList();
+      if (ids.isEmpty) return _emptyView(Icons.chat_bubble_outline_rounded, 'No Conversations', 'Find friends and start chatting');
       return ListView.builder(
         padding: EdgeInsets.zero, itemCount: ids.length,
         itemBuilder: (ctx, i) => _AnimatedListItem(index: i, child: _ConvRow(myId: myId, fid: ids[i])),
@@ -779,11 +833,14 @@ class _ConvRow extends StatelessWidget {
           builder: (_, mSnap) {
             String last = 'Tap to start chatting'; int? ts; bool unread = false; bool mine = false;
             if (mSnap.hasData && mSnap.data!.snapshot.value != null) {
-              final v = (mSnap.data!.snapshot.value as Map).values.first;
-              last   = v['type'] == 'image' ? '📷 Image' : (v['text'] ?? '');
-              ts     = v['timestamp'] is int ? v['timestamp'] as int : null;
-              unread = v['senderId'] != myId && v['read'] != true;
-              mine   = v['senderId'] == myId;
+              final rawMap = mSnap.data!.snapshot.value as Map;
+              if (rawMap.isNotEmpty) {
+                final v = Map.from(rawMap.values.first as Map? ?? {});
+                last   = v['type'] == 'image' ? '📷 Image' : (v['text']?.toString() ?? '');
+                ts     = v['timestamp'] is int ? v['timestamp'] as int : null;
+                unread = v['senderId'] != myId && v['read'] != true;
+                mine   = v['senderId'] == myId;
+              }
             }
             return _TapScale(
               onTap: () { HapticFeedback.lightImpact(); _gaxPush(ctx, ChatRoom(target: u)); },
@@ -944,7 +1001,8 @@ class _SocialState extends State<SocialTab> {
         stream: FirebaseDatabase.instance.ref('users/${widget.myId}/req').onValue,
         builder: (_, snap) {
           if (!snap.hasData || snap.data!.snapshot.value == null) return const SizedBox();
-          final ids = (snap.data!.snapshot.value as Map).keys.toList();
+          final ids = (snap.data!.snapshot.value as Map? ?? {}).keys.map((k) => k.toString()).toList();
+          if (ids.isEmpty) return const SizedBox();
           return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _SectionLabel('REQUESTS  ·  ${ids.length}'),
             ...ids.asMap().entries.map((e) => StreamBuilder(
@@ -984,7 +1042,7 @@ class _SocialState extends State<SocialTab> {
         builder: (ctx, snap) {
           if (!snap.hasData || snap.data!.snapshot.value == null)
             return _emptyView(Icons.people_outline_rounded, 'No Friends Yet', 'Start adding people from Find tab');
-          final ids = (snap.data!.snapshot.value as Map).keys.toList();
+          final ids = (snap.data!.snapshot.value as Map? ?? {}).keys.map((k) => k.toString()).toList();
           return Column(children: ids.asMap().entries.map((e) => StreamBuilder(
             stream: FirebaseDatabase.instance.ref('users/${e.value}').onValue,
             builder: (_, uSnap) {
@@ -1037,19 +1095,48 @@ class ProfileTab extends StatelessWidget {
           SliverToBoxAdapter(child: Column(children: [
             const SizedBox(height: 12),
             _SectionLabel('APPEARANCE'),
-            _PrefRow(icon: Icons.brightness_auto, iconGrad: const LinearGradient(colors: [Color(0xFF4B3ECC), Gx.violet]),
-              title: 'Auto Theme (time-based)',
+            _PrefRow(
+              icon: Icons.brightness_auto,
+              iconGrad: const LinearGradient(colors: [Color(0xFF4B3ECC), Gx.violet]),
+              title: 'Auto Theme',
+              subtitle: tc.auto
+                ? (tc.autoMode == AutoThemeMode.system ? 'Follows phone's dark mode' : 'Changes by time of day')
+                : 'Manual',
               trailing: Switch.adaptive(value: tc.auto, onChanged: tc.setAuto, activeColor: Gx.violet,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap), dark: dark),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              dark: dark,
+            ),
             AnimatedCrossFade(
-              firstChild: _PrefRow(icon: Icons.dark_mode_rounded,
+              crossFadeState: tc.auto ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+              duration: const Duration(milliseconds: 220),
+              firstChild: Column(children: [
+                _PrefRow(
+                  icon: Icons.phone_android_rounded,
+                  iconGrad: const LinearGradient(colors: [Color(0xFF00509D), Color(0xFF00AAFF)]),
+                  title: 'Follow Phone's Mode',
+                  subtitle: 'Uses your phone's dark/light setting',
+                  trailing: _RadioDot(selected: tc.autoMode == AutoThemeMode.system),
+                  onTap: () => tc.setAutoMode(AutoThemeMode.system),
+                  dark: dark,
+                ),
+                _PrefRow(
+                  icon: Icons.schedule_rounded,
+                  iconGrad: const LinearGradient(colors: [Color(0xFF805000), Gx.amber]),
+                  title: 'Time-Based',
+                  subtitle: 'Dark 7PM–6AM · Light otherwise',
+                  trailing: _RadioDot(selected: tc.autoMode == AutoThemeMode.timeBased),
+                  onTap: () => tc.setAutoMode(AutoThemeMode.timeBased),
+                  dark: dark,
+                ),
+              ]),
+              secondChild: _PrefRow(
+                icon: Icons.dark_mode_rounded,
                 iconGrad: const LinearGradient(colors: [Color(0xFF222260), Color(0xFF4B3ECC)]),
                 title: 'Dark Mode',
                 trailing: Switch.adaptive(value: tc.isDarkNow, onChanged: tc.setDark, activeColor: Gx.violet,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap), dark: dark),
-              secondChild: const SizedBox.shrink(),
-              crossFadeState: tc.auto ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 220),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                dark: dark,
+              ),
             ),
             _SectionLabel('ACCOUNT'),
             _PrefRow(icon: Icons.manage_accounts_outlined,
@@ -1263,6 +1350,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   Timer? _typingTimer;
   late final _sendAc = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
   Map? _replyMsg; bool _searching = false; String _srchQ = '';
+  int _lastMsgCount = 0;
   Map? _pinMsg; String? _pinKey; bool _hasText = false;
 
   @override
@@ -1270,6 +1358,8 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     super.initState();
     final ids = [myId, widget.target['uid']]..sort();
     chatId = ids.join('_');
+    // Clean up typing indicator if app is force-killed
+    FirebaseDatabase.instance.ref('typing/$chatId/$myId').onDisconnect().set(false);
     _markRead(); _loadPin(); _initChatMeta();
     _msgC.addListener(() {
       final has = _msgC.text.trim().isNotEmpty;
@@ -1286,18 +1376,21 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   }
 
   void _markRead() => FirebaseDatabase.instance.ref('messages/$chatId').get().then((s) {
-    if (s.value == null) return;
-    (s.value as Map).forEach((k, v) {
-      if (v['senderId'] != myId && v['read'] != true)
+    if (!mounted || s.value == null) return;
+    final map = s.value as Map? ?? {};
+    map.forEach((k, v) {
+      final msg = v is Map ? v : {};
+      if (msg['senderId'] != myId && msg['read'] != true)
         FirebaseDatabase.instance.ref('messages/$chatId/$k/read').set(true);
     });
   });
 
   void _loadPin() => FirebaseDatabase.instance.ref('chats/$chatId/pinned').get().then((s) {
-    if (s.value == null || !mounted) return;
-    final key = s.value as String;
+    if (!mounted || s.value == null) return;
+    final key = s.value.toString();
     FirebaseDatabase.instance.ref('messages/$chatId/$key').get().then((ms) {
-      if (ms.value != null && mounted) setState(() { _pinKey = key; _pinMsg = Map.from(ms.value as Map); });
+      if (!mounted || ms.value == null) return;
+      setState(() { _pinKey = key; _pinMsg = Map.from(ms.value as Map); });
     });
   });
 
@@ -1330,7 +1423,14 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   }
 
   Future<void> _sendImg() async {
-    final url = _imgC.text.trim(); if (url.isEmpty) return;
+    final url = _imgC.text.trim();
+    if (url.isEmpty) return;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please enter a valid image URL (http/https)'),
+        behavior: SnackBarBehavior.floating));
+      return;
+    }
     _imgC.clear(); Navigator.pop(context);
     await FirebaseDatabase.instance.ref('messages/$chatId').push().set({
       'senderId': myId, 'text': url, 'timestamp': ServerValue.timestamp, 'read': false, 'type': 'image',
@@ -1353,7 +1453,8 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
 
   void _initChatMeta() {
     FirebaseDatabase.instance.ref('chats/$chatId/members').update({
-      myId: true, widget.target['uid']: true,
+      myId: true,
+      widget.target['uid'].toString(): true,
     });
   }
 
@@ -1510,9 +1611,12 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
               ]));
             var msgs = (snap.data!.snapshot.value as Map).entries
               .map((e) => {'_key': e.key, ...Map.from(e.value as Map)}).toList();
-            msgs.sort((a, b) => (a['timestamp'] ?? 0).compareTo(b['timestamp'] ?? 0));
+            msgs.sort((a, b) => ((a['timestamp'] ?? 0) as num).compareTo((b['timestamp'] ?? 0) as num));
             if (_srchQ.isNotEmpty) msgs = msgs.where((m) => (m['text'] ?? '').toString().toLowerCase().contains(_srchQ)).toList();
-            _toBottom();
+            if (msgs.length != _lastMsgCount) {
+              _lastMsgCount = msgs.length;
+              _toBottom();
+            }
             return ListView.builder(
               controller: _scroll,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1966,19 +2070,35 @@ class _GaxField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   const _GaxField({this.ctrl, required this.hint, this.icon, this.type,
     this.obscure = false, this.suffix, this.maxLines, required this.dark, this.onChanged});
+
   @override
-  Widget build(BuildContext ctx) => TextField(
-    controller: ctrl, keyboardType: type,
-    obscureText: obscure, maxLines: obscure ? 1 : (maxLines ?? 1),
-    onChanged: onChanged,
-    style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 15),
-    decoration: InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L),
-      prefixIcon: icon != null ? Icon(icon, size: 18, color: dark ? Gx.tx2 : Gx.tx2L) : null,
-      suffixIcon: suffix,
-    ),
-  );
+  Widget build(BuildContext ctx) {
+    final textClr  = dark ? Gx.tx1  : Gx.tx1L;
+    final hintClr  = dark ? Gx.tx2  : Gx.tx2L;
+    final iconClr  = dark ? Gx.tx2  : Gx.tx2L;
+    final fillClr  = dark ? Gx.d4   : Gx.l2;
+    final focusBdr = BorderSide(color: Gx.violet, width: 1.6);
+    final radius   = BorderRadius.circular(14);
+    return TextField(
+      controller: ctrl, keyboardType: type,
+      obscureText: obscure, maxLines: obscure ? 1 : (maxLines ?? 1),
+      onChanged: onChanged,
+      cursorColor: Gx.violet,
+      style: TextStyle(color: textClr, fontSize: 15, height: 1.4),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: hintClr, fontSize: 14),
+        filled: true,
+        fillColor: fillClr,
+        border:        OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: radius, borderSide: focusBdr),
+        prefixIcon: icon != null ? Icon(icon, size: 18, color: iconClr) : null,
+        suffixIcon: suffix,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
 }
 
 class _GaxBtn extends StatelessWidget {
@@ -2066,20 +2186,42 @@ class _ContactRow extends StatelessWidget {
 
 class _PrefRow extends StatelessWidget {
   final IconData icon; final Gradient iconGrad; final String title;
+  final String? subtitle;
   final Color? titleColor; final Widget? trailing; final VoidCallback? onTap; final bool dark;
   const _PrefRow({required this.icon, required this.iconGrad, required this.title,
-    required this.dark, this.titleColor, this.trailing, this.onTap});
+    required this.dark, this.subtitle, this.titleColor, this.trailing, this.onTap});
   @override
   Widget build(BuildContext ctx) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     leading: Container(
       width: 38, height: 38,
       decoration: BoxDecoration(gradient: iconGrad, borderRadius: BorderRadius.circular(11), boxShadow: Gx.glow(Gx.violet, b: 8, s: -2)),
       child: Icon(icon, size: 19, color: Colors.white),
     ),
     title: Text(title, style: TextStyle(color: titleColor ?? (dark ? Gx.tx1 : Gx.tx1L), fontSize: 15, fontWeight: FontWeight.w500)),
+    subtitle: subtitle != null ? Text(subtitle!, style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 12.5)) : null,
     trailing: trailing ?? (onTap != null ? Icon(Icons.chevron_right_rounded, size: 18, color: dark ? Gx.tx2 : Gx.tx2L) : null),
     onTap: onTap,
+  );
+}
+
+class _RadioDot extends StatelessWidget {
+  final bool selected;
+  const _RadioDot({required this.selected});
+  @override
+  Widget build(BuildContext ctx) => AnimatedContainer(
+    duration: const Duration(milliseconds: 200),
+    width: 22, height: 22,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: selected ? Gx.gBrand : null,
+      border: Border.all(
+        color: selected ? Colors.transparent : Gx.tx2,
+        width: 2,
+      ),
+      boxShadow: selected ? Gx.glow(Gx.violet, b: 8, s: -2) : [],
+    ),
+    child: selected ? const Icon(Icons.check_rounded, size: 13, color: Colors.white) : null,
   );
 }
 
@@ -2148,18 +2290,22 @@ Widget _emptyView(IconData icon, String title, String sub) => Center(
         child: Builder(builder: (ctx) {
           final dark = Theme.of(ctx).brightness == Brightness.dark;
           return Container(
-            width: 76, height: 76,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(22),
-              color: dark ? Gx.d4 : Gx.l2, border: Border.all(color: Gx.violet.withOpacity(0.2))),
-            child: Icon(icon, size: 36, color: dark ? Gx.tx3 : Gx.tx3L));
+            width: 80, height: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              color: dark ? Gx.d4 : const Color(0xFFE8E6FF),
+              border: Border.all(color: Gx.violet.withOpacity(dark ? 0.22 : 0.35), width: 1.2),
+              boxShadow: dark ? [] : [BoxShadow(color: Gx.violet.withOpacity(0.10), blurRadius: 16, offset: const Offset(0, 4))],
+            ),
+            child: Icon(icon, size: 38, color: dark ? Gx.tx2 : Gx.indigo));
         })),
-      const SizedBox(height: 18),
+      const SizedBox(height: 20),
       Builder(builder: (ctx) {
         final dark = Theme.of(ctx).brightness == Brightness.dark;
         return Column(children: [
-          Text(title, style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Text(sub, textAlign: TextAlign.center, style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 13)),
+          Text(title, style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 17, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 7),
+          Text(sub, textAlign: TextAlign.center, style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 13.5, height: 1.4)),
         ]);
       }),
     ]),
