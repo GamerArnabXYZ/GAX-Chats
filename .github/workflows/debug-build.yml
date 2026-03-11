@@ -1,4 +1,4 @@
-name: 🔨 Debug APK Build
+name: 🔨 Release APK Build
 
 on:
   push:
@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build-debug:
-    name: Build Debug APK
+  build-release:
+    name: Build Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -37,23 +37,23 @@ jobs:
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
 
-      - name: 🔨 Build Split Debug APK
-        run: flutter build apk --debug --split-per-abi
+      - name: 🔨 Build Release APK
+        run: flutter build apk --release --split-per-abi
 
       - name: 🏷️ Delete Old Release
         run: |
-          gh release delete debug-latest --yes || true
-          git push origin --delete debug-latest || true
+          gh release delete latest-build --yes || true
+          git push origin --delete latest-build || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🚀 Create Release with Direct APK
+      - name: 🚀 Upload Release APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: debug-latest
-          name: "🔨 Debug APK (Latest)"
-          body: "Auto-built debug APK — direct download!"
+          tag_name: latest-build
+          name: "✅ Latest APK Build"
+          body: "Auto-built release APK — direct download!"
           prerelease: true
           files: |
-            build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
-            build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
