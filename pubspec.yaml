@@ -1,16 +1,21 @@
 name: gax_chats
-description: Production Ready Real-time Chat App
-version: 1.0.0+1
+description: GAX Chats - Real-time messaging app
+version: 7.0.0+7
+
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^2.15.0
-  firebase_auth: ^4.7.3
-  firebase_database: ^10.2.5
-  intl: ^0.18.1
+
+  # Firebase — exact versions compatible with Flutter 3.22 + web + android
+  firebase_core: 3.6.0
+  firebase_auth: 5.3.1
+  firebase_database: 11.1.4
+
+  # Utils
+  intl: ^0.19.0
 
 flutter:
   uses-material-design: true
