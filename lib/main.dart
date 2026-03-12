@@ -842,7 +842,7 @@ class _ConvRow extends StatelessWidget {
           builder: (_, mSnap) {
             String last = 'Tap to start chatting'; int? ts; bool unread = false; bool mine = false;
             if (mSnap.hasData && mSnap.data!.snapshot.value != null) {
-              final rawMap = mSnap.data!.snapshot.value as Map;
+              final rawMap = mSnap.data!.snapshot.value as Map? ?? {};
               if (rawMap.isNotEmpty) {
                 final v = Map.from(rawMap.values.first as Map? ?? {});
                 last   = v['type'] == 'image' ? '📷 Image' : (v['text']?.toString() ?? '');
@@ -983,7 +983,7 @@ class _FindState extends State<FindTab> {
                     itemCount: list.length,
                     itemBuilder: (ctx, i) => _AnimatedListItem(index: i, child: _ContactRow(
                       u: list[i],
-                      trailing: _GaxChip(label: 'Add', icon: Icons.person_add_alt_1_rounded,
+                      trailing: list[i]['uid'] == myId ? const SizedBox.shrink() : _GaxChip(label: 'Add', icon: Icons.person_add_alt_1_rounded,
                         onTap: () { HapticFeedback.mediumImpact(); FirebaseDatabase.instance.ref('users/${list[i]['uid']}/req/$myId').set(true).catchError((_){}); }),
                     )),
                   );
@@ -1374,15 +1374,18 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     // Clean up typing indicator if app is force-killed
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').onDisconnect().set(false).catchError((_){});
     _markRead(); _loadPin(); _initChatMeta();
-    _msgC.addListener(() {
-      if (!mounted) return;
-      final has = _msgC.text.trim().isNotEmpty;
-      if (has != _hasText) setState(() => _hasText = has);
-    });
+    _msgC.addListener(_msgListener);
+  }
+
+  void _msgListener() {
+    if (!mounted) return;
+    final has = _msgC.text.trim().isNotEmpty;
+    if (has != _hasText) setState(() => _hasText = has);
   }
 
   @override
   void dispose() {
+    _msgC.removeListener(_msgListener);
     _msgC.dispose(); _imgC.dispose(); _srcC.dispose(); _scroll.dispose();
     _typingTimer?.cancel(); _sendAc.dispose();
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((_){});
@@ -1467,8 +1470,11 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   Future<void> _saveChatMeta(String type, String text) async {
     final raw     = type == 'image' ? '📷 Image' : text.trim();
     final preview  = raw.length > 80 ? '${raw.substring(0, 80)}…' : raw;
+    // Update members individually to avoid overwriting other participants
+    await FirebaseDatabase.instance.ref('chats/$chatId/members').update({
+      myId: true, widget.target['uid'].toString(): true,
+    });
     await FirebaseDatabase.instance.ref('chats/$chatId').update({
-      'members': {myId: true, widget.target['uid']: true},
       'lastMsg': preview,
       'lastMsgType': type,
       'lastMsgSender': myId,
@@ -1555,7 +1561,15 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
               setState(() { _pinKey = key; _pinMsg = msg; }); Navigator.pop(c);
             }, dark: dark),
           if (isMe) _ActionRow(icon: Icons.delete_outline_rounded, color: Gx.rose, label: 'Delete',
-            onTap: () { FirebaseDatabase.instance.ref('messages/$chatId/$key').remove().catchError((_){}); Navigator.pop(c); }, dark: dark),
+            onTap: () {
+              FirebaseDatabase.instance.ref('messages/$chatId/$key').remove().catchError((_){});
+              // Clear pin if this message was pinned
+              if (_pinKey == key) {
+                FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){});
+                setState(() { _pinKey = null; _pinMsg = null; });
+              }
+              Navigator.pop(c);
+            }, dark: dark),
         ]),
       )),
     );
@@ -1723,7 +1737,7 @@ class _BubbleWidget extends StatelessWidget {
               ),
               child: _BubbleBody(msg: msg, isMe: isMe, tx: tx, tsTx: tsTx, myId: myId, dark: dark),
             ),
-            if (msg['reactions'] != null) _Reactions(r: Map.from(msg['reactions'])),
+            if (msg['reactions'] is Map) _Reactions(r: Map<String,dynamic>.from(msg['reactions'] as Map)),
           ]),
         )),
       ),
@@ -1742,7 +1756,7 @@ class _BubbleBody extends StatelessWidget {
       bottomLeft: Radius.circular(isMe ? 16 : 5), bottomRight: Radius.circular(isMe ? 5 : 16),
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (msg['replyTo'] != null) _ReplyPreview(reply: Map.from(msg['replyTo']), myId: myId, isMe: isMe, dark: dark),
+      if (msg['replyTo'] is Map) _ReplyPreview(reply: Map<String,dynamic>.from(msg['replyTo'] as Map), myId: myId, isMe: isMe, dark: dark),
       if (msg['type'] == 'image')
         _ImgContent(url: msg['text'])
       else
@@ -1790,7 +1804,7 @@ class _ImgContent extends StatelessWidget {
   @override
   Widget build(BuildContext ctx) => ClipRRect(
     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-    child: Image.network(url, width: 230, height: 195, fit: BoxFit.cover,
+    child: Image.network(url, width: 230, height: 195, fit: BoxFit.cover, cacheWidth: 460,
       loadingBuilder: (c, ch, p) => p == null ? ch : const SizedBox(width: 230, height: 195, child: Center(child: _GaxSpinner())),
       errorBuilder: (c, e, s) => const SizedBox(width: 230, height: 80,
         child: Center(child: Icon(Icons.broken_image_outlined, color: Gx.tx2)))),
@@ -1804,7 +1818,7 @@ class _Reactions extends StatelessWidget {
   Widget build(BuildContext ctx) {
     final dark = Theme.of(ctx).brightness == Brightness.dark;
     final counts = <String, int>{};
-    r.forEach((_, v) { counts[v] = (counts[v] ?? 0) + 1; });
+    r.forEach((_, v) { final e = v?.toString() ?? '?'; counts[e] = (counts[e] ?? 0) + 1; });
     return Padding(
       padding: const EdgeInsets.only(top: 3),
       child: Wrap(spacing: 4, runSpacing: 4, children: counts.entries.map((e) => Container(
@@ -2048,16 +2062,21 @@ class _Avi extends StatelessWidget {
   const _Avi({required this.pfp, required this.online, required this.radius});
   @override
   Widget build(BuildContext ctx) {
-    final bg = Theme.of(ctx).scaffoldBackgroundColor;
+    final bg       = Theme.of(ctx).scaffoldBackgroundColor;
+    final hasPfp   = pfp.isNotEmpty && (pfp.startsWith('http://') || pfp.startsWith('https://'));
+    final imgProv  = hasPfp ? NetworkImage(pfp) as ImageProvider : null;
+    final fallback = Icon(Icons.person_rounded, size: radius * 0.9, color: Gx.tx2);
     return Stack(clipBehavior: Clip.none, children: [
       if (online) Container(
         width: radius * 2 + 4, height: radius * 2 + 4,
         decoration: BoxDecoration(shape: BoxShape.circle, gradient: Gx.gBrand, boxShadow: Gx.glow(Gx.violet, b: 10, s: -2)),
         child: Padding(padding: const EdgeInsets.all(2),
           child: CircleAvatar(radius: radius, backgroundColor: Gx.d3,
-            backgroundImage: NetworkImage(pfp), onBackgroundImageError: (_, __) {})),
+            backgroundImage: imgProv, onBackgroundImageError: (_, __) {},
+            child: imgProv == null ? fallback : null)),
       ) else CircleAvatar(radius: radius, backgroundColor: Gx.d3,
-        backgroundImage: NetworkImage(pfp), onBackgroundImageError: (_, __) {}),
+        backgroundImage: imgProv, onBackgroundImageError: (_, __) {},
+        child: imgProv == null ? fallback : null),
       Positioned(right: 0, bottom: 0, child: Container(
         width: radius * 0.48, height: radius * 0.48,
         decoration: BoxDecoration(color: online ? Gx.live : Gx.away, shape: BoxShape.circle,
