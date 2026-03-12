@@ -802,7 +802,6 @@ class ChatsTab extends StatelessWidget {
                     confirmLabel: 'Delete',
                     confirmClr: Gx.rose,
                     onConfirm: () { confirmed = true; Navigator.pop(dCtx); },
-                    dark: Theme.of(ctx).brightness == Brightness.dark,
                   ),
                 );
                 return confirmed;
@@ -1659,7 +1658,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                       const SizedBox(width: 4), _DotsLoader(small: true, color: Colors.white60),
                     ]);
                   return StreamBuilder(
-                    stream: FirebaseDatabase.instance.ref('users/\${widget.target['uid']}').onValue,
+                    stream: FirebaseDatabase.instance.ref("users/${widget.target['uid']}").onValue,
                     builder: (_, stSnap) {
                       final d = stSnap.hasData && stSnap.data!.snapshot.value != null
                           ? Map<String,dynamic>.from(stSnap.data!.snapshot.value as Map? ?? {}) : <String,dynamic>{};
@@ -1674,10 +1673,10 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                             lsRaw is int ? lsRaw : int.tryParse(lsRaw.toString()) ?? 0);
                         final diff = DateTime.now().difference(lsDt);
                         if (diff.inMinutes < 1)       subtitle = 'last seen just now';
-                        else if (diff.inMinutes < 60) subtitle = 'last seen \${diff.inMinutes}m ago';
-                        else if (diff.inHours < 24)   subtitle = 'last seen \${diff.inHours}h ago';
+                        else if (diff.inMinutes < 60) subtitle = 'last seen ${diff.inMinutes}m ago';
+                        else if (diff.inHours < 24)   subtitle = 'last seen ${diff.inHours}h ago';
                         else if (diff.inDays == 1)     subtitle = 'last seen yesterday';
-                        else                           subtitle = 'last seen \${diff.inDays}d ago';
+                        else                           subtitle = 'last seen ${diff.inDays}d ago';
                       } else {
                         subtitle = 'offline';
                       }
