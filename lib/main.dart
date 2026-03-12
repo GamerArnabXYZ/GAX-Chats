@@ -298,6 +298,7 @@ class _AuthGate extends StatelessWidget {
       final uid = snap.data!.uid;
       FirebaseDatabase.instance.ref('users/$uid/status').set('online').catchError((_){});
       FirebaseDatabase.instance.ref('users/$uid/status').onDisconnect().set('offline').catchError((_){});
+      FirebaseDatabase.instance.ref('users/$uid/lastSeen').onDisconnect().set(ServerValue.timestamp).catchError((_){});
       return StreamBuilder(
         stream: FirebaseDatabase.instance.ref('users/$uid').onValue,
         builder: (c, db) {
@@ -519,7 +520,17 @@ class _PSState extends State<ProfileSetup> {
     final dark = Theme.of(ctx).brightness == Brightness.dark;
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(title: const Text('Create Your Profile')),
+      appBar: AppBar(
+        backgroundColor: dark ? Gx.d3 : Gx.violet,
+        elevation: 0,
+        leading: const SizedBox.shrink(),
+        title: Row(children: [
+          _GaxLogo(size: 28),
+          const SizedBox(width: 10),
+          const Text('Create Profile',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+        ]),
+      ),
       body: ListView(padding: const EdgeInsets.all(24), children: [
         const SizedBox(height: 8),
         Center(child: _GaxLogo(size: 64)),
@@ -591,6 +602,27 @@ class _MainState extends State<MainScreen> {
     );
   }
 
+  NavigationDestination _navDest(int i, List icons, List labels, int reqCnt, Color activeClr, Color inactiveClr) {
+    final hasReq = i == 2 && reqCnt > 0;
+    final badge  = hasReq ? Text(reqCnt > 9 ? '9+' : '$reqCnt',
+        style: const TextStyle(fontSize: 8, color: Colors.white)) : null;
+    return NavigationDestination(
+      icon: Badge(
+        isLabelVisible: hasReq,
+        label: badge,
+        backgroundColor: Gx.violet,
+        child: Icon(icons[i][0] as IconData),
+      ),
+      selectedIcon: Badge(
+        isLabelVisible: hasReq,
+        label: badge,
+        backgroundColor: activeClr,
+        child: Icon(icons[i][1] as IconData),
+      ),
+      label: labels[i],
+    );
+  }
+
   Widget _buildNavBar(BuildContext ctx, String myId, bool dark, Color bg) {
     const icons = [
       [Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded],
@@ -600,69 +632,66 @@ class _MainState extends State<MainScreen> {
     ];
     const labels = ['Chats', 'Find', 'Social', 'Profile'];
 
-    return Theme(
-      // Override theme locally so NavigationBar uses our colors
-      data: Theme.of(ctx).copyWith(
-        navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: bg,
-          indicatorColor: Gx.violet,
-          iconTheme: WidgetStateProperty.resolveWith((states) {
-            final active = states.contains(WidgetState.selected);
-            return IconThemeData(
-              color: active ? Colors.white : (dark ? Gx.tx2 : const Color(0xFF8888AA)),
-              size: 22,
-            );
-          }),
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            final active = states.contains(WidgetState.selected);
-            return TextStyle(
-              fontSize: 10.5,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              color: active ? Gx.violet : (dark ? Gx.tx3 : const Color(0xFFAAAAAC)),
-            );
-          }),
-          elevation: 12,
-          shadowColor: Colors.black.withOpacity(0.3),
-          surfaceTintColor: Colors.transparent,
-          overlayColor: WidgetStateProperty.all(Colors.transparent),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          height: 68,
-        ),
-      ),
-      child: StreamBuilder(
-        stream: FirebaseDatabase.instance.ref('users/$myId/req').onValue,
-        builder: (_, snap) {
-          final reqCnt = (snap.hasData && snap.data!.snapshot.value != null)
-              ? (snap.data!.snapshot.value as Map? ?? {}).length : 0;
+    final inactiveClr = dark ? const Color(0xFF4A4B6A) : const Color(0xFF9999BB);
+    final activeClr   = Gx.violet;
 
-          return NavigationBar(
-            selectedIndex: _tab,
-            onDestinationSelected: _goTab,
-            destinations: [
-              for (int i = 0; i < 4; i++)
-                NavigationDestination(
-                  icon: i == 2 && reqCnt > 0
-                      ? Badge(
-                          label: Text(reqCnt > 9 ? '9+' : '$reqCnt',
-                            style: const TextStyle(fontSize: 8, color: Colors.white)),
-                          backgroundColor: Gx.violet,
-                          child: Icon(icons[i][0] as IconData),
-                        )
-                      : Icon(icons[i][0] as IconData),
-                  selectedIcon: i == 2 && reqCnt > 0
-                      ? Badge(
-                          label: Text(reqCnt > 9 ? '9+' : '$reqCnt',
-                            style: const TextStyle(fontSize: 8, color: Colors.white)),
-                          backgroundColor: Colors.white,
-                          child: Icon(icons[i][1] as IconData),
-                        )
-                      : Icon(icons[i][1] as IconData),
-                  label: labels[i],
-                ),
-            ],
-          );
-        },
-      ),
+    return StreamBuilder(
+      stream: FirebaseDatabase.instance.ref('users/$myId/req').onValue,
+      builder: (_, snap) {
+        final reqCnt = (snap.hasData && snap.data!.snapshot.value != null)
+            ? (snap.data!.snapshot.value as Map? ?? {}).length : 0;
+
+        return Theme(
+          data: Theme.of(ctx).copyWith(
+            navigationBarTheme: NavigationBarThemeData(
+              backgroundColor: bg,
+              // Rounded pill indicator with gradient via ShaderMask trick
+              indicatorColor: Gx.violet.withOpacity(0.18),
+              indicatorShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              iconTheme: WidgetStateProperty.resolveWith((states) {
+                final active = states.contains(WidgetState.selected);
+                return IconThemeData(
+                  color: active ? activeClr : inactiveClr,
+                  size: 24,
+                );
+              }),
+              labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                final active = states.contains(WidgetState.selected);
+                return TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  color: active ? activeClr : inactiveClr,
+                  letterSpacing: 0.1,
+                );
+              }),
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              overlayColor: WidgetStateProperty.all(Colors.transparent),
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              height: 64,
+            ),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            // Top divider line
+            Divider(height: 1, thickness: 0.8,
+              color: dark ? const Color(0xFF1E1F38) : const Color(0xFFE0E0EE)),
+            NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: _goTab,
+              animationDuration: const Duration(milliseconds: 300),
+              destinations: [
+                _navDest(0, icons, labels, reqCnt, activeClr, inactiveClr),
+                _navDest(1, icons, labels, reqCnt, activeClr, inactiveClr),
+                _navDest(2, icons, labels, reqCnt, activeClr, inactiveClr),
+                _navDest(3, icons, labels, reqCnt, activeClr, inactiveClr),
+              ],
+            ),
+          ]),
+        );
+      },
     );
   }
 }
@@ -755,7 +784,52 @@ class ChatsTab extends StatelessWidget {
       if (ids.isEmpty) return _emptyView(Icons.chat_bubble_outline_rounded, 'No Conversations', 'Find friends and start chatting');
       return ListView.builder(
         padding: EdgeInsets.zero, itemCount: ids.length,
-        itemBuilder: (ctx, i) => _AnimatedListItem(index: i, child: _ConvRow(myId: myId, fid: ids[i])),
+        itemBuilder: (ctx, i) {
+          final fid = ids[i];
+          final chatId = ([myId, fid]..sort()).join('_');
+          return _AnimatedListItem(
+            index: i,
+            child: Dismissible(
+              key: Key('conv_$fid'),
+              direction: DismissDirection.endToStart,
+              confirmDismiss: (_) async {
+                bool confirmed = false;
+                await showDialog(
+                  context: ctx,
+                  builder: (dCtx) => _GaxAlertDialog(
+                    title: 'Delete Conversation',
+                    body: 'This will remove the chat from your list. Messages are not deleted.',
+                    confirmLabel: 'Delete',
+                    confirmClr: Gx.rose,
+                    onConfirm: () { confirmed = true; Navigator.pop(dCtx); },
+                    dark: Theme.of(ctx).brightness == Brightness.dark,
+                  ),
+                );
+                return confirmed;
+              },
+              onDismissed: (_) {
+                // Remove friend link (hides chat from list)
+                FirebaseDatabase.instance.ref('users/$myId/friends/$fid').remove().catchError((_){});
+              },
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, Gx.rose.withOpacity(0.85)],
+                    begin: Alignment.centerLeft, end: Alignment.centerRight,
+                  ),
+                ),
+                child: const Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.delete_outline_rounded, color: Colors.white, size: 26),
+                  SizedBox(height: 4),
+                  Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                ]),
+              ),
+              child: _ConvRow(myId: myId, fid: fid),
+            ),
+          );
+        },
       );
     },
   );
@@ -907,21 +981,67 @@ class _FindState extends State<FindTab> {
             ? _emptyView(Icons.person_search_rounded, 'Find People', 'Search by @username to connect')
             : StreamBuilder(
                 stream: FirebaseDatabase.instance.ref('users').orderByChild('username')
-                    .startAt(_q.toLowerCase()).endAt('${_q.toLowerCase()}\uf8ff').onValue,
+                    .startAt(_q.toLowerCase()).endAt('\${_q.toLowerCase()}\uf8ff').onValue,
                 builder: (ctx, snap) {
                   if (!snap.hasData) return const Center(child: _GaxSpinner());
-                  final list = <Map>[];
-                  (snap.data!.snapshot.value as Map?)?.forEach((k, v) {
-                    if (v is Map && v['uid'] != myId) list.add(Map<String,dynamic>.from(v));
-                  });
-                  if (list.isEmpty) return _emptyView(Icons.search_off_rounded, 'No Results', 'Try a different username');
-                  return ListView.builder(
-                    itemCount: list.length,
-                    itemBuilder: (ctx, i) => _AnimatedListItem(index: i, child: _ContactRow(
-                      u: list[i],
-                      trailing: list[i]['uid'] == myId ? const SizedBox.shrink() : _GaxChip(label: 'Add', icon: Icons.person_add_alt_1_rounded,
-                        onTap: () { HapticFeedback.mediumImpact(); FirebaseDatabase.instance.ref('users/${list[i]['uid']}/req/$myId').set(true).catchError((_){}); }),
-                    )),
+                  // Also stream friends list to hide already-added users
+                  return StreamBuilder(
+                    stream: FirebaseDatabase.instance.ref('users/$myId/friends').onValue,
+                    builder: (ctx, friendSnap) {
+                      final friendIds = <String>{};
+                      if (friendSnap.hasData && friendSnap.data!.snapshot.value != null) {
+                        (friendSnap.data!.snapshot.value as Map? ?? {}).forEach((k, _) {
+                          friendIds.add(k.toString());
+                        });
+                      }
+                      // Also stream pending requests sent by me
+                      return StreamBuilder(
+                        stream: FirebaseDatabase.instance.ref('users/$myId/req').onValue,
+                        builder: (ctx, reqSnap) {
+                          final list = <Map>[];
+                          (snap.data!.snapshot.value as Map?)?.forEach((k, v) {
+                            if (v is Map) {
+                              final uid = v['uid']?.toString() ?? '';
+                              // Exclude: self, already friends
+                              if (uid != myId && !friendIds.contains(uid)) {
+                                list.add(Map<String,dynamic>.from(v));
+                              }
+                            }
+                          });
+                          if (list.isEmpty) return _emptyView(Icons.search_off_rounded, 'No Results', 'Try a different username');
+                          return ListView.builder(
+                            itemCount: list.length,
+                            itemBuilder: (ctx, i) {
+                              // Check if request already sent
+                              final uid = list[i]['uid']?.toString() ?? '';
+                              final reqSent = reqSnap.hasData && reqSnap.data!.snapshot.value != null
+                                  && (reqSnap.data!.snapshot.value as Map? ?? {}).containsKey(uid);
+                              return _AnimatedListItem(index: i, child: _ContactRow(
+                                u: list[i],
+                                trailing: reqSent
+                                    ? Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Gx.violet.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                          Icon(Icons.check_rounded, size: 14, color: Gx.violet),
+                                          const SizedBox(width: 4),
+                                          Text('Sent', style: TextStyle(color: Gx.violet, fontSize: 12, fontWeight: FontWeight.w600)),
+                                        ]),
+                                      )
+                                    : _GaxChip(label: 'Add', icon: Icons.person_add_alt_1_rounded,
+                                        onTap: () {
+                                          HapticFeedback.mediumImpact();
+                                          FirebaseDatabase.instance.ref('users/$uid/req/$myId').set(true).catchError((_){});
+                                        }),
+                              ));
+                            },
+                          );
+                        },
+                      );
+                    },
                   );
                 },
               ),
@@ -1325,6 +1445,9 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     _msgC.dispose(); _imgC.dispose(); _srcC.dispose(); _scroll.dispose();
     _typingTimer?.cancel(); _sendAc.dispose();
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((_){});
+    // Write lastSeen timestamp on leave
+    FirebaseDatabase.instance.ref('users/$myId/lastSeen')
+        .set(ServerValue.timestamp).catchError((_){});
     super.dispose();
   }
 
@@ -1536,13 +1659,34 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                       const SizedBox(width: 4), _DotsLoader(small: true, color: Colors.white60),
                     ]);
                   return StreamBuilder(
-                    stream: FirebaseDatabase.instance.ref('users/${widget.target['uid']}/status').onValue,
+                    stream: FirebaseDatabase.instance.ref('users/\${widget.target['uid']}').onValue,
                     builder: (_, stSnap) {
-                      final st = stSnap.data?.snapshot.value;
+                      final d = stSnap.hasData && stSnap.data!.snapshot.value != null
+                          ? Map<String,dynamic>.from(stSnap.data!.snapshot.value as Map? ?? {}) : <String,dynamic>{};
+                      final st  = d['status']?.toString();
+                      final lsRaw = d['lastSeen'];
+                      final online = st == 'online';
+                      String subtitle;
+                      if (online) {
+                        subtitle = '● online';
+                      } else if (lsRaw != null) {
+                        final lsDt = DateTime.fromMillisecondsSinceEpoch(
+                            lsRaw is int ? lsRaw : int.tryParse(lsRaw.toString()) ?? 0);
+                        final diff = DateTime.now().difference(lsDt);
+                        if (diff.inMinutes < 1)       subtitle = 'last seen just now';
+                        else if (diff.inMinutes < 60) subtitle = 'last seen \${diff.inMinutes}m ago';
+                        else if (diff.inHours < 24)   subtitle = 'last seen \${diff.inHours}h ago';
+                        else if (diff.inDays == 1)     subtitle = 'last seen yesterday';
+                        else                           subtitle = 'last seen \${diff.inDays}d ago';
+                      } else {
+                        subtitle = 'offline';
+                      }
                       return AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
-                        child: Text(st == 'online' ? '● online' : '○ offline', key: ValueKey(st),
-                          style: TextStyle(color: st == 'online' ? Gx.live.withOpacity(0.9) : Colors.white38, fontSize: 11.5)),
+                        child: Text(subtitle, key: ValueKey(subtitle),
+                          style: TextStyle(
+                            color: online ? Gx.live.withOpacity(0.9) : Colors.white54,
+                            fontSize: 11.5)),
                       );
                     },
                   );
@@ -2027,14 +2171,29 @@ class _GaxLogo extends StatelessWidget {
   final double size;
   const _GaxLogo({required this.size});
   @override
-  Widget build(BuildContext ctx) => Container(
-    width: size, height: size,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(size * 0.26),
-      gradient: Gx.gBrand, boxShadow: Gx.glow(Gx.violet, b: 24),
-    ),
-    child: Icon(Icons.bolt_rounded, size: size * 0.56, color: Colors.white),
-  );
+  Widget build(BuildContext ctx) {
+    // Uses logo.png from assets/logo.png if present, fallback to gradient icon
+    return SizedBox(
+      width: size, height: size,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.26),
+        child: Image.asset(
+          'assets/logo.png',
+          width: size, height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            width: size, height: size,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(size * 0.26),
+              gradient: Gx.gBrand,
+              boxShadow: Gx.glow(Gx.violet, b: 24),
+            ),
+            child: Icon(Icons.bolt_rounded, size: size * 0.56, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _BrandText extends StatelessWidget {
