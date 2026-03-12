@@ -549,10 +549,13 @@ class MainScreen extends StatefulWidget {
   const MainScreen({super.key, required this.tc});
   @override State<MainScreen> createState() => _MainState();
 }
-class _MainState extends State<MainScreen> with SingleTickerProviderStateMixin {
+
+class _MainState extends State<MainScreen> {
   int _tab = 0;
   late final _pc = PageController();
-  @override void dispose() { _pc.dispose(); super.dispose(); }
+
+  @override
+  void dispose() { _pc.dispose(); super.dispose(); }
 
   void _goTab(int i) {
     if (i == _tab) return;
@@ -565,38 +568,101 @@ class _MainState extends State<MainScreen> with SingleTickerProviderStateMixin {
   Widget build(BuildContext ctx) {
     final myId = FirebaseAuth.instance.currentUser!.uid;
     final dark  = Theme.of(ctx).brightness == Brightness.dark;
-    // Nav bar height: 62px content + system bottom inset
-    final bottomInset = MediaQuery.of(ctx).padding.bottom;
-    final navH = 62.0 + (bottomInset > 0 ? bottomInset : 10.0);
+    final bg    = dark ? const Color(0xFF0C0D1E) : Colors.white;
 
     return Scaffold(
       backgroundColor: dark ? Gx.d1 : Gx.l0,
       resizeToAvoidBottomInset: false,
       appBar: _GaxAppBar(tab: _tab, dark: dark, tc: widget.tc, myId: myId),
-      // Stack: PageView fills screen, nav bar floats on top at bottom
-      body: Stack(children: [
-        // Page content with bottom padding so content isn't hidden under nav
-        Positioned.fill(
-          child: Padding(
-            padding: EdgeInsets.only(bottom: navH),
-            child: PageView(
-              controller: _pc,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                ChatsTab(myId: myId),
-                const FindTab(),
-                SocialTab(myId: myId),
-                ProfileTab(tc: widget.tc),
-              ],
-            ),
-          ),
+
+      // ── Flutter native NavigationBar — works on EVERY phone ──
+      bottomNavigationBar: _buildNavBar(ctx, myId, dark, bg),
+
+      body: PageView(
+        controller: _pc,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          ChatsTab(myId: myId),
+          const FindTab(),
+          SocialTab(myId: myId),
+          ProfileTab(tc: widget.tc),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavBar(BuildContext ctx, String myId, bool dark, Color bg) {
+    const icons = [
+      [Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded],
+      [Icons.explore_outlined,             Icons.explore_rounded],
+      [Icons.people_outline_rounded,       Icons.people_rounded],
+      [Icons.person_outline_rounded,       Icons.person_rounded],
+    ];
+    const labels = ['Chats', 'Find', 'Social', 'Profile'];
+
+    return Theme(
+      // Override theme locally so NavigationBar uses our colors
+      data: Theme.of(ctx).copyWith(
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: bg,
+          indicatorColor: Gx.violet,
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            final active = states.contains(WidgetState.selected);
+            return IconThemeData(
+              color: active ? Colors.white : (dark ? Gx.tx2 : const Color(0xFF8888AA)),
+              size: 22,
+            );
+          }),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final active = states.contains(WidgetState.selected);
+            return TextStyle(
+              fontSize: 10.5,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: active ? Gx.violet : (dark ? Gx.tx3 : const Color(0xFFAAAAAC)),
+            );
+          }),
+          elevation: 12,
+          shadowColor: Colors.black.withOpacity(0.3),
+          surfaceTintColor: Colors.transparent,
+          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          height: 68,
         ),
-        // Nav bar pinned at exact bottom
-        Positioned(
-          left: 0, right: 0, bottom: 0,
-          child: _GaxNavBar(tab: _tab, onTap: _goTab, myId: myId, dark: dark),
-        ),
-      ]),
+      ),
+      child: StreamBuilder(
+        stream: FirebaseDatabase.instance.ref('users/$myId/req').onValue,
+        builder: (_, snap) {
+          final reqCnt = (snap.hasData && snap.data!.snapshot.value != null)
+              ? (snap.data!.snapshot.value as Map? ?? {}).length : 0;
+
+          return NavigationBar(
+            selectedIndex: _tab,
+            onDestinationSelected: _goTab,
+            destinations: [
+              for (int i = 0; i < 4; i++)
+                NavigationDestination(
+                  icon: i == 2 && reqCnt > 0
+                      ? Badge(
+                          label: Text(reqCnt > 9 ? '9+' : '$reqCnt',
+                            style: const TextStyle(fontSize: 8, color: Colors.white)),
+                          backgroundColor: Gx.violet,
+                          child: Icon(icons[i][0] as IconData),
+                        )
+                      : Icon(icons[i][0] as IconData),
+                  selectedIcon: i == 2 && reqCnt > 0
+                      ? Badge(
+                          label: Text(reqCnt > 9 ? '9+' : '$reqCnt',
+                            style: const TextStyle(fontSize: 8, color: Colors.white)),
+                          backgroundColor: Colors.white,
+                          child: Icon(icons[i][1] as IconData),
+                        )
+                      : Icon(icons[i][1] as IconData),
+                  label: labels[i],
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -671,216 +737,6 @@ class _GaxAppBar extends StatelessWidget implements PreferredSizeWidget {
 // ═══════════════════════════════════════════════════
 //  ANIMATED BOTTOM NAV BAR
 // ═══════════════════════════════════════════════════
-class _GaxNavBar extends StatelessWidget {
-  final int tab;
-  final ValueChanged<int> onTap;
-  final String myId;
-  final bool dark;
-  const _GaxNavBar({required this.tab, required this.onTap, required this.myId, required this.dark});
-
-  @override
-  Widget build(BuildContext ctx) {
-    final bg      = dark ? const Color(0xFF0E0F22) : Colors.white;
-    final topClr  = dark ? const Color(0xFF1A1B35).withOpacity(0.6) : Colors.black.withOpacity(0.06);
-    final bottomInset = MediaQuery.of(ctx).padding.bottom;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        border: Border(top: BorderSide(color: topClr, width: 1.0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(dark ? 0.40 : 0.10),
-            blurRadius: 24,
-            offset: const Offset(0, -6),
-          ),
-        ],
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        SizedBox(
-          height: 62,
-          child: Row(children: [
-            _GaxNavTab(
-              icon: Icons.chat_bubble_outline_rounded,
-              activeIcon: Icons.chat_bubble_rounded,
-              label: 'Chats',
-              index: 0, active: tab, onTap: onTap, dark: dark,
-            ),
-            _GaxNavTab(
-              icon: Icons.explore_outlined,
-              activeIcon: Icons.explore_rounded,
-              label: 'Find',
-              index: 1, active: tab, onTap: onTap, dark: dark,
-            ),
-            _GaxNavTabBadged(
-              icon: Icons.people_outline_rounded,
-              activeIcon: Icons.people_rounded,
-              label: 'Social',
-              index: 2, active: tab, onTap: onTap, dark: dark, myId: myId,
-            ),
-            _GaxNavTab(
-              icon: Icons.person_outline_rounded,
-              activeIcon: Icons.person_rounded,
-              label: 'Profile',
-              index: 3, active: tab, onTap: onTap, dark: dark,
-            ),
-          ]),
-        ),
-        // Bottom safe area spacer
-        SizedBox(height: bottomInset > 0 ? bottomInset : 8),
-      ]),
-    );
-  }
-}
-
-// ── Single nav tab ──────────────────────────────
-class _GaxNavTab extends StatefulWidget {
-  final IconData icon, activeIcon;
-  final String label;
-  final int index, active;
-  final ValueChanged<int> onTap;
-  final bool dark;
-  const _GaxNavTab({
-    required this.icon, required this.activeIcon, required this.label,
-    required this.index, required this.active, required this.onTap, required this.dark,
-  });
-  @override State<_GaxNavTab> createState() => _GaxNavTabState();
-}
-class _GaxNavTabState extends State<_GaxNavTab>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ac = AnimationController(
-    vsync: this, duration: const Duration(milliseconds: 260));
-  late final Animation<double> _scaleAnim = Tween(begin: 1.0, end: 1.15)
-      .animate(CurvedAnimation(parent: _ac, curve: Curves.easeOutBack));
-  late final Animation<double> _slideAnim = Tween(begin: 0.0, end: -2.5)
-      .animate(CurvedAnimation(parent: _ac, curve: Curves.easeOut));
-
-  bool get _active => widget.index == widget.active;
-
-  @override
-  void initState() {
-    super.initState();
-    if (_active) _ac.value = 1.0;
-  }
-
-  @override
-  void didUpdateWidget(_GaxNavTab old) {
-    super.didUpdateWidget(old);
-    _active ? _ac.forward() : _ac.reverse();
-  }
-
-  @override
-  void dispose() { _ac.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext ctx) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => widget.onTap(widget.index),
-        child: AnimatedBuilder(
-          animation: _ac,
-          builder: (_, __) => Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Transform.translate(
-                offset: Offset(0, _slideAnim.value),
-                child: Transform.scale(
-                  scale: _scaleAnim.value,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 46, height: 30,
-                    decoration: _active ? BoxDecoration(
-                      gradient: Gx.gBrand,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: Gx.glow(Gx.violet, b: 14, s: -3),
-                    ) : null,
-                    child: Icon(
-                      _active ? widget.activeIcon : widget.icon,
-                      size: 20,
-                      color: _active
-                        ? Colors.white
-                        : (widget.dark ? Gx.tx2 : const Color(0xFF9090B8)),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 160),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: _active ? FontWeight.w700 : FontWeight.w500,
-                  color: _active
-                    ? Gx.violet
-                    : (widget.dark ? const Color(0xFF4A4B6A) : const Color(0xFFAAAAAC)),
-                  letterSpacing: 0.1,
-                ),
-                child: Text(widget.label),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Social tab with badge ───────────────────────
-class _GaxNavTabBadged extends StatelessWidget {
-  final IconData icon, activeIcon;
-  final String label, myId;
-  final int index, active;
-  final ValueChanged<int> onTap;
-  final bool dark;
-  const _GaxNavTabBadged({
-    required this.icon, required this.activeIcon, required this.label,
-    required this.myId, required this.index, required this.active,
-    required this.onTap, required this.dark,
-  });
-
-  @override
-  Widget build(BuildContext ctx) => StreamBuilder(
-    stream: FirebaseDatabase.instance.ref('users/$myId/req').onValue,
-    builder: (_, snap) {
-      final cnt = (snap.hasData && snap.data!.snapshot.value != null)
-          ? (snap.data!.snapshot.value as Map? ?? {}).length : 0;
-      return Stack(clipBehavior: Clip.none, children: [
-        _GaxNavTab(
-          icon: icon, activeIcon: activeIcon, label: label,
-          index: index, active: active, onTap: onTap, dark: dark,
-        ),
-        if (cnt > 0) Positioned(
-          right: 16, top: 6,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 380),
-            curve: Curves.elasticOut,
-            builder: (_, v, child) => Transform.scale(scale: v, child: child),
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                gradient: Gx.gBrand,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: dark ? const Color(0xFF0E0F22) : Colors.white,
-                  width: 1.5,
-                ),
-              ),
-              child: Center(child: Text(
-                cnt > 9 ? '9+' : '$cnt',
-                style: const TextStyle(
-                  color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800),
-              )),
-            ),
-          ),
-        ),
-      ]);
-    },
-  );
-}
-
 
 // ═══════════════════════════════════════════════════
 //  CHATS TAB
