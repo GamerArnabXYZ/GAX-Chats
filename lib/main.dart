@@ -8,7 +8,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 // ═══════════════════════════════════════════════════
-//  DESIGN TOKENS  —  GAX v7.0
+//  DESIGN TOKENS  —  GAX v9.0
 // ═══════════════════════════════════════════════════
 class Gx {
   // Dark palette
@@ -782,61 +782,122 @@ class ChatsTab extends StatelessWidget {
       final rawMap = snap.data!.snapshot.value as Map? ?? {};
       final ids = rawMap.keys.map((k) => k.toString()).toList();
       if (ids.isEmpty) return _emptyView(Icons.chat_bubble_outline_rounded, 'No Conversations', 'Find friends and start chatting');
-      return ListView.builder(
-        padding: EdgeInsets.zero, itemCount: ids.length,
-        itemBuilder: (ctx, i) {
-          final fid = ids[i];
-          final chatId = ([myId, fid]..sort()).join('_');
-          return _AnimatedListItem(
-            index: i,
-            child: Dismissible(
-              key: Key('conv_$fid'),
-              direction: DismissDirection.endToStart,
-              confirmDismiss: (_) async {
-                bool confirmed = false;
-                await showDialog(
-                  context: ctx,
-                  builder: (dCtx) => _GaxAlertDialog(
-                    title: 'Delete Conversation',
-                    body: 'This will remove the chat from your list. Messages are not deleted.',
-                    confirmLabel: 'Delete',
-                    confirmClr: Gx.rose,
-                    onConfirm: () { confirmed = true; Navigator.pop(dCtx); },
-                  ),
-                );
-                return confirmed;
-              },
-              onDismissed: (_) {
-                // Remove friend link (hides chat from list)
-                FirebaseDatabase.instance.ref('users/$myId/friends/$fid').remove().catchError((_){});
-              },
-              background: Container(
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: 24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.transparent, Gx.rose.withOpacity(0.85)],
-                    begin: Alignment.centerLeft, end: Alignment.centerRight,
-                  ),
-                ),
-                child: const Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.delete_outline_rounded, color: Colors.white, size: 26),
-                  SizedBox(height: 4),
-                  Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                ]),
-              ),
-              child: _ConvRow(myId: myId, fid: fid),
-            ),
-          );
-        },
-      );
+      // Per-chatId streams — no root read needed
+      return _SortedChatList(myId: myId, friendIds: ids);
     },
   );
 }
 
+// Streams each chatId individually, sorts by lastTs in memory
+class _SortedChatList extends StatefulWidget {
+  final String myId;
+  final List<String> friendIds;
+  const _SortedChatList({required this.myId, required this.friendIds});
+  @override State<_SortedChatList> createState() => _SortedChatListState();
+}
+class _SortedChatListState extends State<_SortedChatList> {
+  final Map<String,int> _lastTs = {};
+  final Map<String,int> _unread = {};
+  final Map<String,StreamSubscription> _subs = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeAll(widget.friendIds);
+  }
+
+  @override
+  void didUpdateWidget(_SortedChatList old) {
+    super.didUpdateWidget(old);
+    final newIds = widget.friendIds.toSet();
+    final oldIds = old.friendIds.toSet();
+    for (final id in newIds.difference(oldIds)) _subscribeSingle(id);
+    for (final id in oldIds.difference(newIds)) { _subs[id]?.cancel(); _subs.remove(id); }
+  }
+
+  void _subscribeAll(List<String> ids) {
+    for (final fid in ids) _subscribeSingle(fid);
+  }
+
+  void _subscribeSingle(String fid) {
+    final chatId = ([widget.myId, fid]..sort()).join('_');
+    _subs[fid]?.cancel();
+    _subs[fid] = FirebaseDatabase.instance.ref('chats/$chatId').onValue.listen((event) {
+      if (!mounted) return;
+      final d = event.snapshot.value is Map
+          ? Map<String,dynamic>.from(event.snapshot.value as Map? ?? {}) : <String,dynamic>{};
+      final ts  = d['lastTs'] is int ? d['lastTs'] as int : 0;
+      final unreadMap = d['unread'] is Map ? d['unread'] as Map : {};
+      final unread = unreadMap[widget.myId] is int ? unreadMap[widget.myId] as int : 0;
+      setState(() { _lastTs[fid] = ts; _unread[fid] = unread; });
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final s in _subs.values) s.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext ctx) {
+    final sorted = List<String>.from(widget.friendIds)
+      ..sort((a, b) => (_lastTs[b] ?? 0).compareTo(_lastTs[a] ?? 0));
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: sorted.length,
+      itemBuilder: (ctx, i) {
+        final fid    = sorted[i];
+        final unread = _unread[fid] ?? 0;
+        return _AnimatedListItem(
+          index: i,
+          child: Dismissible(
+            key: Key('conv_$fid'),
+            direction: DismissDirection.endToStart,
+            confirmDismiss: (_) async {
+              bool confirmed = false;
+              await showDialog(
+                context: ctx,
+                builder: (dCtx) => _GaxAlertDialog(
+                  title: 'Delete Conversation',
+                  body: 'This will remove the chat from your list. Messages are not deleted.',
+                  confirmLabel: 'Delete',
+                  confirmClr: Gx.rose,
+                  onConfirm: () { confirmed = true; Navigator.pop(dCtx); },
+                ),
+              );
+              return confirmed;
+            },
+            onDismissed: (_) {
+              FirebaseDatabase.instance.ref("users/${widget.myId}/friends/$fid").remove().catchError((_){});
+            },
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.transparent, Gx.rose.withOpacity(0.85)],
+                  begin: Alignment.centerLeft, end: Alignment.centerRight,
+                ),
+              ),
+              child: const Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.delete_outline_rounded, color: Colors.white, size: 26),
+                SizedBox(height: 4),
+                Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+            child: _ConvRow(myId: widget.myId, fid: fid, unread: unread),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _ConvRow extends StatelessWidget {
   final String myId, fid;
-  const _ConvRow({required this.myId, required this.fid});
+  const _ConvRow({required this.myId, required this.fid, this.unread = 0});
+  final int unread;
   @override
   Widget build(BuildContext ctx) {
     final chatId = ([myId, fid]..sort()).join('_');
@@ -849,21 +910,21 @@ class _ConvRow extends StatelessWidget {
         return StreamBuilder(
           stream: FirebaseDatabase.instance.ref('messages/$chatId').limitToLast(1).onValue,
           builder: (_, mSnap) {
-            String last = 'Tap to start chatting'; int? ts; bool unread = false; bool mine = false;
+            String last = 'Tap to start chatting'; int? ts; bool hasUnread = false; bool mine = false;
             if (mSnap.hasData && mSnap.data!.snapshot.value != null) {
               final rawMap = mSnap.data!.snapshot.value as Map? ?? {};
               if (rawMap.isNotEmpty) {
                 final v = Map.from(rawMap.values.first as Map? ?? {});
-                last   = v['type'] == 'image' ? '📷 Image' : (v['text']?.toString() ?? '');
-                ts     = v['timestamp'] is int ? v['timestamp'] as int : null;
-                unread = v['senderId'] != myId && v['read'] != true;
-                mine   = v['senderId'] == myId;
+                last     = v['type'] == 'image' ? '📷 Image' : v['type'] == 'link' ? '🔗 Link' : (v['text']?.toString() ?? '');
+                ts       = v['timestamp'] is int ? v['timestamp'] as int : null;
+                hasUnread= unread > 0;
+                mine     = v['senderId'] == myId;
               }
             }
             return _TapScale(
               onTap: () { HapticFeedback.lightImpact(); _gaxPush(ctx, ChatRoom(target: u)); },
               child: Container(
-                color: unread ? Gx.violet.withOpacity(dark ? 0.05 : 0.04) : Colors.transparent,
+                color: hasUnread ? Gx.violet.withOpacity(dark ? 0.05 : 0.04) : Colors.transparent,
                 child: Column(children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -873,12 +934,12 @@ class _ConvRow extends StatelessWidget {
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Row(children: [
                           Expanded(child: Text(u['name'] ?? '',
-                            style: TextStyle(fontWeight: unread ? FontWeight.w800 : FontWeight.w700,
+                            style: TextStyle(fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w700,
                               fontSize: 15.5, color: dark ? Gx.tx1 : Gx.tx1L))),
                           if (ts != null) Text(_timeStr(DateTime.fromMillisecondsSinceEpoch(ts)),
                             style: TextStyle(fontSize: 11.5,
-                              color: unread ? Gx.violet : (dark ? Gx.tx2 : Gx.tx2L),
-                              fontWeight: unread ? FontWeight.w700 : FontWeight.normal)),
+                              color: hasUnread ? Gx.violet : (dark ? Gx.tx2 : Gx.tx2L),
+                              fontWeight: hasUnread ? FontWeight.w700 : FontWeight.normal)),
                         ]),
                         const SizedBox(height: 4),
                         Row(children: [
@@ -896,11 +957,11 @@ class _ConvRow extends StatelessWidget {
                                     ])
                                   : Text(last, key: const ValueKey('m'), maxLines: 1, overflow: TextOverflow.ellipsis,
                                       style: TextStyle(fontSize: 13, color: dark ? Gx.tx2 : Gx.tx2L,
-                                        fontWeight: unread ? FontWeight.w600 : FontWeight.normal)),
+                                        fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal)),
                               );
                             },
                           )),
-                          if (unread) _UnreadBadge(),
+                          if (hasUnread) _UnreadBadge(count: unread),
                         ]),
                       ])),
                     ]),
@@ -918,11 +979,15 @@ class _ConvRow extends StatelessWidget {
 }
 
 class _UnreadBadge extends StatelessWidget {
+  final int count;
+  const _UnreadBadge({this.count = 1});
   @override
   Widget build(BuildContext ctx) => Container(
-    margin: const EdgeInsets.only(left: 8),
-    width: 9, height: 9,
-    decoration: BoxDecoration(gradient: Gx.gBrand, shape: BoxShape.circle, boxShadow: Gx.glow(Gx.violet, b: 7, s: 0)),
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+    decoration: BoxDecoration(gradient: Gx.gBrand, borderRadius: BorderRadius.circular(99),
+      boxShadow: Gx.glow(Gx.violet, b: 8)),
+    child: Text(count > 99 ? '99+' : count > 9 ? '$count' : '$count',
+      style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
   );
 }
 
@@ -977,10 +1042,10 @@ class _FindState extends State<FindTab> {
       Expanded(child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         child: _q.isEmpty
-            ? _emptyView(Icons.person_search_rounded, 'Find People', 'Search by @username to connect')
+            ? _FindEmptyView(myId: myId)
             : StreamBuilder(
                 stream: FirebaseDatabase.instance.ref('users').orderByChild('username')
-                    .startAt(_q.toLowerCase()).endAt('\${_q.toLowerCase()}\uf8ff').onValue,
+                    .startAt(_q.toLowerCase()).endAt('${_q.toLowerCase()}').onValue,
                 builder: (ctx, snap) {
                   if (!snap.hasData) return const Center(child: _GaxSpinner());
                   // Also stream friends list to hide already-added users
@@ -1062,7 +1127,9 @@ class _SocialState extends State<SocialTab> {
   @override
   Widget build(BuildContext ctx) {
     final dark = Theme.of(ctx).brightness == Brightness.dark;
-    return CustomScrollView(slivers: [
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
       SliverToBoxAdapter(child: StreamBuilder(
         stream: FirebaseDatabase.instance.ref('users/${widget.myId}/req').onValue,
         builder: (_, snap) {
@@ -1109,31 +1176,36 @@ class _SocialState extends State<SocialTab> {
           if (!snap.hasData || snap.data!.snapshot.value == null)
             return _emptyView(Icons.people_outline_rounded, 'No Friends Yet', 'Start adding people from Find tab');
           final ids = (snap.data!.snapshot.value as Map? ?? {}).keys.map((k) => k.toString()).toList();
-          return Column(children: ids.asMap().entries.map((e) => StreamBuilder(
-            stream: FirebaseDatabase.instance.ref('users/${e.value}').onValue,
-            builder: (_, uSnap) {
-              if (!uSnap.hasData || uSnap.data!.snapshot.value == null) return const SizedBox();
-              final u = Map.from(uSnap.data!.snapshot.value as Map? ?? {});
-              if (_filter.isNotEmpty && !(u['name'] ?? '').toString().toLowerCase().contains(_filter)) return const SizedBox();
-              return _AnimatedListItem(index: e.key, child: _ContactRow(u: u,
-                onTap: () => _gaxPush(ctx, ChatRoom(target: u)),
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  _RoundBtn(icon: Icons.chat_bubble_outline_rounded, color: Gx.violet,
-                    onTap: () => _gaxPush(ctx, ChatRoom(target: u))),
-                  const SizedBox(width: 8),
-                  _RoundBtn(icon: Icons.person_remove_outlined, color: Gx.rose,
-                    onTap: () => _gaxDialog(ctx,
-                      title: 'Remove Friend', body: 'Remove ${u['name']} from your friends?',
-                      confirmLabel: 'Remove', confirmClr: Gx.rose,
-                      onConfirm: () {
-                        FirebaseDatabase.instance.ref('users/${widget.myId}/friends/${e.value}').remove().catchError((_){});
-                        FirebaseDatabase.instance.ref('users/${e.value}/friends/${widget.myId}').remove().catchError((_){});
-                        Navigator.pop(ctx);
-                      })),
-                ]),
-              ));
-            },
-          )).toList());
+          return Column(children: [
+            // ── Online Now strip ──────────────────────────
+            _OnlineFriendsStrip(friendIds: ids, myId: widget.myId, dark: dark),
+            // ── Full friends list ─────────────────────────
+            ...ids.asMap().entries.map((e) => StreamBuilder(
+              stream: FirebaseDatabase.instance.ref('users/${e.value}').onValue,
+              builder: (_, uSnap) {
+                if (!uSnap.hasData || uSnap.data!.snapshot.value == null) return const SizedBox();
+                final u = Map.from(uSnap.data!.snapshot.value as Map? ?? {});
+                if (_filter.isNotEmpty && !(u['name'] ?? '').toString().toLowerCase().contains(_filter)) return const SizedBox();
+                return _AnimatedListItem(index: e.key, child: _ContactRow(u: u,
+                  onTap: () => _gaxPush(ctx, ChatRoom(target: u)),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    _RoundBtn(icon: Icons.chat_bubble_outline_rounded, color: Gx.violet,
+                      onTap: () => _gaxPush(ctx, ChatRoom(target: u))),
+                    const SizedBox(width: 8),
+                    _RoundBtn(icon: Icons.person_remove_outlined, color: Gx.rose,
+                      onTap: () => _gaxDialog(ctx,
+                        title: 'Remove Friend', body: 'Remove ${u['name']} from your friends?',
+                        confirmLabel: 'Remove', confirmClr: Gx.rose,
+                        onConfirm: () {
+                          FirebaseDatabase.instance.ref('users/${widget.myId}/friends/${e.value}').remove().catchError((_){});
+                          FirebaseDatabase.instance.ref('users/${e.value}/friends/${widget.myId}').remove().catchError((_){});
+                          Navigator.pop(ctx);
+                        })),
+                  ]),
+                ));
+              },
+            )).toList(),
+          ]);
         },
       )),
     ]);
@@ -1208,6 +1280,15 @@ class ProfileTab extends StatelessWidget {
             _PrefRow(icon: Icons.manage_accounts_outlined,
               iconGrad: const LinearGradient(colors: [Color(0xFF0080CC), Gx.cyan]),
               title: 'Edit Profile', onTap: () => _editProfile(ctx, d), dark: dark),
+            _PrefRow(icon: Icons.notifications_outlined,
+              iconGrad: const LinearGradient(colors: [Color(0xFF7B4F00), Gx.amber]),
+              title: 'Notifications',
+              subtitle: 'Message sounds & vibration',
+              trailing: Switch.adaptive(
+                value: true, onChanged: (_) {},
+                activeColor: Gx.violet,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              dark: dark),
             _PrefRow(icon: Icons.info_outline_rounded,
               iconGrad: const LinearGradient(colors: [Color(0xFF1E7D32), Gx.mint]),
               title: 'About GAX', onTap: () => _showAbout(ctx), dark: dark),
@@ -1223,7 +1304,7 @@ class ProfileTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 9),
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: Gx.violet.withOpacity(0.22))),
               child: Center(child: ShaderMask(shaderCallback: (r) => Gx.gBrand.createShader(r),
-                child: const Text('GAX  ·  v7.0  ·  GamerArnabXYZ',
+                child: const Text('GAX  ·  v9.0  ·  GamerArnabXYZ',
                   style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)))),
             ),
             const SizedBox(height: 40),
@@ -1274,7 +1355,7 @@ class ProfileTab extends StatelessWidget {
   }
 
   void _showAbout(BuildContext ctx) => showDialog(context: ctx, builder: (c) => _GaxAlertDialog(
-    title: 'About GAX', body: 'GAX Chats — real-time messaging.\nFast. Secure. Yours.\n\nv7.0  ·  Built by GamerArnabXYZ',
+    title: 'About GAX', body: 'GAX Chats — real-time messaging.\nFast. Secure. Yours.\n\nv9.0  ·  Built by GamerArnabXYZ\nArnabLabZ Studio\n\n✨ Features: Emoji reactions, message forward, URL sharing, online friends, real-time presence, smart unread counts.',
     confirmLabel: 'Close', confirmClr: Gx.violet, onConfirm: () => Navigator.pop(c),
   ));
 }
@@ -1315,8 +1396,41 @@ class _ProfileHeader extends StatelessWidget {
           child: Text((d['bio'] ?? '').toString(), textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 13))),
       ],
-      const SizedBox(height: 28),
+      const SizedBox(height: 16),
+      // ── Stats pills ──────────────────────────────
+      StreamBuilder(
+        stream: FirebaseDatabase.instance.ref('users/${d['uid']}/friends').onValue,
+        builder: (_, snap) {
+          final count = (snap.hasData && snap.data!.snapshot.value != null)
+              ? (snap.data!.snapshot.value as Map? ?? {}).length : 0;
+          return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _StatPill(label: 'Friends', value: '$count'),
+            const SizedBox(width: 12),
+            _StatPill(label: 'Status', value: d['status'] == 'online' ? '🟢 Online' : '⚫ Offline'),
+          ]);
+        },
+      ),
+      const SizedBox(height: 24),
     ])),
+  );
+}
+
+class _StatPill extends StatelessWidget {
+  final String label, value;
+  const _StatPill({required this.label, required this.value});
+  @override
+  Widget build(BuildContext ctx) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.12),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white.withOpacity(0.18)),
+    ),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 2),
+      Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10.5, fontWeight: FontWeight.w500)),
+    ]),
   );
 }
 
@@ -1409,6 +1523,7 @@ class ChatRoom extends StatefulWidget {
   @override State<ChatRoom> createState() => _ChatState();
 }
 class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
+  bool get dark => Theme.of(context).brightness == Brightness.dark;
   final _msgC  = TextEditingController();
   final _imgC  = TextEditingController();
   final _srcC  = TextEditingController();
@@ -1428,6 +1543,9 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     chatId = ids.join('_');
     // Clean up typing indicator if app is force-killed
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').onDisconnect().set(false).catchError((_){});
+    // Mark user online
+    FirebaseDatabase.instance.ref('users/$myId/status').set('online').catchError((_){});
+    FirebaseDatabase.instance.ref('users/$myId/status').onDisconnect().set('offline').catchError((_){});
     _markRead(); _loadPin(); _initChatMeta();
     _msgC.addListener(_msgListener);
   }
@@ -1450,15 +1568,22 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _markRead() => FirebaseDatabase.instance.ref('messages/$chatId').get().then((s) {
-    if (!mounted || s.value == null) return;
-    final map = s.value as Map? ?? {};
-    map.forEach((k, v) {
-      final msg = v is Map ? v : {};
-      if (msg['senderId'] != myId && msg['read'] != true)
-        FirebaseDatabase.instance.ref('messages/$chatId/$k/read').set(true).catchError((_){});
+  void _markRead() {
+    FirebaseDatabase.instance.ref('messages/$chatId').get().then((s) {
+      if (!mounted || s.value == null) return;
+      final map = s.value as Map? ?? {};
+      final Map<String, dynamic> updates = {};
+      map.forEach((k, v) {
+        final msg = v is Map ? v : {};
+        if (msg['senderId'] != myId && msg['read'] != true)
+          updates['messages/$chatId/$k/read'] = true;
+      });
+      if (updates.isNotEmpty)
+        FirebaseDatabase.instance.ref().update(updates).catchError((_){});
+      // Reset unread counter
+      FirebaseDatabase.instance.ref('chats/$chatId/unread/$myId').set(0).catchError((_){});
     });
-  });
+  }
 
   void _loadPin() => FirebaseDatabase.instance.ref('chats/$chatId/pinned').get().then((s) {
     if (!mounted || s.value == null) return;
@@ -1526,18 +1651,25 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   }
 
   Future<void> _saveChatMeta(String type, String text) async {
-    final raw     = type == 'image' ? '📷 Image' : text.trim();
-    final preview  = raw.length > 80 ? '${raw.substring(0, 80)}…' : raw;
-    // Update members individually to avoid overwriting other participants
-    await FirebaseDatabase.instance.ref('chats/$chatId/members').update({
-      myId: true, widget.target['uid'].toString(): true,
+    final raw     = type == 'image' ? '📷 Image' : type == 'link' ? '🔗 Link' : text.trim();
+    final preview  = raw.length > 80 ? '\${raw.substring(0, 80)}…' : raw;
+    final otherUid = widget.target['uid'].toString();
+    // Batch write: meta + members + unread increment
+    await FirebaseDatabase.instance.ref().update({
+      'chats/$chatId/members/$myId': true,
+      'chats/$chatId/members/$otherUid': true,
+      'chats/$chatId/lastMsg': preview,
+      'chats/$chatId/lastMsgType': type,
+      'chats/$chatId/lastMsgSender': myId,
+      'chats/$chatId/lastTs': ServerValue.timestamp,
+      'chats/$chatId/updatedAt': ServerValue.timestamp,
     });
-    await FirebaseDatabase.instance.ref('chats/$chatId').update({
-      'lastMsg': preview,
-      'lastMsgType': type,
-      'lastMsgSender': myId,
-      'lastTs': ServerValue.timestamp,
-      'updatedAt': ServerValue.timestamp,
+    // Increment unread counter for receiver (they'll reset on open)
+    FirebaseDatabase.instance.ref('chats/$chatId/unread/$otherUid')
+        .get().then((snap) {
+      final cur = (snap.value is int ? snap.value as int : 0);
+      FirebaseDatabase.instance.ref('chats/$chatId/unread/$otherUid')
+          .set(cur + 1).catchError((_){});
     });
   }
 
@@ -1548,8 +1680,226 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     }).catchError((_) {}); // silent fail - non-critical
   }
 
+  // ── Forward message to a friend ─────────────────
+  void _showForwardSheet(Map msg) {
+    final fwdText = msg['type'] == 'image' ? msg['text'] : (msg['text'] ?? '');
+    final fwdType = msg['type'] ?? 'text';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: dark ? Gx.d4 : Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (c) => SafeArea(child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          _SheetHandle(),
+          const SizedBox(height: 10),
+          Text('Forward to…', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 280,
+            child: StreamBuilder(
+              stream: FirebaseDatabase.instance.ref('users/$myId/friends').onValue,
+              builder: (_, snap) {
+                if (!snap.hasData || snap.data!.snapshot.value == null)
+                  return Center(child: Text('No friends yet', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L)));
+                final ids = (snap.data!.snapshot.value as Map? ?? {}).keys.map((k) => k.toString()).toList();
+                return ListView.builder(
+                  itemCount: ids.length,
+                  itemBuilder: (_, i) => StreamBuilder(
+                    stream: FirebaseDatabase.instance.ref('users/${ids[i]}').onValue,
+                    builder: (_, uSnap) {
+                      if (!uSnap.hasData || uSnap.data!.snapshot.value == null) return const SizedBox();
+                      final u = Map<String,dynamic>.from(uSnap.data!.snapshot.value as Map? ?? {});
+                      final toChatId = ([myId, ids[i]]..sort()).join('_');
+                      return _TapScale(
+                        onTap: () async {
+                          HapticFeedback.mediumImpact();
+                          final payload = <String,dynamic>{
+                            'senderId': myId, 'text': fwdText,
+                            'timestamp': ServerValue.timestamp, 'read': false,
+                            'type': fwdType, 'forwarded': true,
+                          };
+                          await FirebaseDatabase.instance.ref('messages/$toChatId').push().set(payload);
+                          await FirebaseDatabase.instance.ref('chats/$toChatId/members').update({myId: true, ids[i]: true});
+                          await FirebaseDatabase.instance.ref('chats/$toChatId').update({
+                            'lastMsg': fwdType == 'image' ? '📷 Image' : (fwdText.length > 80 ? fwdText.substring(0,80) : fwdText),
+                            'lastMsgType': fwdType, 'lastMsgSender': myId,
+                            'lastTs': ServerValue.timestamp, 'updatedAt': ServerValue.timestamp,
+                          });
+                          if (mounted) Navigator.pop(c);
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text('Forwarded to ${u['name']}'),
+                            behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 2)));
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                          child: Row(children: [
+                            _Avi(pfp: u['pfp'] ?? '', online: u['status'] == 'online', radius: 22),
+                            const SizedBox(width: 12),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(u['name'] ?? '', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontWeight: FontWeight.w700, fontSize: 14)),
+                              Text('@${u['username'] ?? ''}', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 12)),
+                            ])),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(gradient: Gx.gBrand, borderRadius: BorderRadius.circular(20)),
+                              child: const Text('Send', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                            ),
+                          ]),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ]),
+      )),
+    );
+  }
+
+  // ── Send URL as link type ─────────────────────
+  Future<void> _sendLink(String url) async {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+    HapticFeedback.lightImpact();
+    final payload = <String,dynamic>{
+      'senderId': myId, 'text': url,
+      'timestamp': ServerValue.timestamp, 'read': false, 'type': 'link',
+    };
+    await FirebaseDatabase.instance.ref('messages/$chatId').push().set(payload);
+    await _saveChatMeta('link', '🔗 $url');
+    if (!mounted) return;
+    _markRead(); _toBottom();
+  }
+
+  void _emojiSheet() {
+    const emojis = [
+      '😀','😂','🥰','😎','🤔','😭','🙏','🔥',
+      '💯','❤️','💜','💙','✨','🎉','👏','👀',
+      '😅','🤣','😍','🥺','😤','😴','🤗','😇',
+      '💪','🫡','🙌','🫶','🤝','👋','✌️','🤙',
+      '🍕','🎮','🚀','💎','🏆','🎯','⚡','🌟',
+    ];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: dark ? Gx.d4 : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (c) => SafeArea(child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          _SheetHandle(), const SizedBox(height: 10),
+          Text('Emoji', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6, runSpacing: 6,
+            children: emojis.map((e) => _TapScale(
+              onTap: () {
+                Navigator.pop(c);
+                _msgC.text = _msgC.text + e;
+                _msgC.selection = TextSelection.collapsed(offset: _msgC.text.length);
+              },
+              child: Container(
+                width: 46, height: 46,
+                decoration: BoxDecoration(
+                  color: dark ? Gx.d5 : Gx.l2,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(child: Text(e, style: const TextStyle(fontSize: 22))),
+              ),
+            )).toList(),
+          ),
+          const SizedBox(height: 8),
+        ]),
+      )),
+    );
+  }
+
+  void _chatMoreMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: dark ? Gx.d4 : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (c) => SafeArea(child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          _SheetHandle(), const SizedBox(height: 8),
+          _ActionRow(icon: Icons.person_outline_rounded, color: Gx.violet,
+            label: 'View Profile',
+            onTap: () {
+              Navigator.pop(c);
+              showDialog(context: context,
+                builder: (_) => ProfileDialog(u: widget.target));
+            }, dark: dark),
+          _ActionRow(icon: Icons.push_pin_outlined, color: Gx.indigo,
+            label: _pinMsg != null ? 'Unpin Message' : 'No Pinned Message',
+            onTap: _pinMsg != null ? () {
+              FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){});
+              setState(() { _pinKey = null; _pinMsg = null; });
+              Navigator.pop(c);
+            } : null, dark: dark),
+          _ActionRow(icon: Icons.cleaning_services_outlined, color: Gx.amber,
+            label: 'Clear Chat',
+            onTap: () {
+              Navigator.pop(c);
+              _gaxDialog(context, title: 'Clear Chat',
+                body: 'Delete all messages? This cannot be undone.',
+                confirmLabel: 'Clear', confirmClr: Gx.rose,
+                onConfirm: () {
+                  FirebaseDatabase.instance.ref('messages/$chatId').remove().catchError((_){});
+                  FirebaseDatabase.instance.ref('chats/$chatId/lastMsg').set('').catchError((_){});
+                  Navigator.pop(context);
+                });
+            }, dark: dark),
+          _ActionRow(icon: Icons.block_rounded, color: Gx.rose,
+            label: 'Unfriend & Remove',
+            onTap: () {
+              Navigator.pop(c);
+              _gaxDialog(context, title: 'Unfriend',
+                body: 'Remove ${widget.target['name']} from friends?',
+                confirmLabel: 'Remove', confirmClr: Gx.rose,
+                onConfirm: () {
+                  final otherUid = widget.target['uid'].toString();
+                  FirebaseDatabase.instance.ref('users/$myId/friends/$otherUid').remove().catchError((_){});
+                  FirebaseDatabase.instance.ref('users/$otherUid/friends/$myId').remove().catchError((_){});
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                });
+            }, dark: dark),
+        ]),
+      )),
+    );
+  }
+
+  void _linkSheet() {
+    final lctrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: dark ? Gx.d4 : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (c) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom + 20, left: 20, right: 20, top: 14),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          _SheetHandle(), const SizedBox(height: 14),
+          Text('Share a Link', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 14),
+          _GaxField(ctrl: lctrl, hint: 'Paste URL here…', icon: Icons.link_rounded,
+            type: TextInputType.url, dark: dark),
+          const SizedBox(height: 16),
+          _GaxBtn(onTap: () async {
+            final url = lctrl.text.trim();
+            Navigator.pop(c);
+            lctrl.dispose();
+            await _sendLink(url);
+          }, child: const Text('Send Link', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15))),
+        ]),
+      ),
+    );
+  }
+
   void _imgSheet() {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context, isScrollControlled: true,
       backgroundColor: dark ? Gx.d4 : Colors.white,
@@ -1606,6 +1956,11 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
           Divider(color: dark ? Gx.divD : Gx.divL),
           _ActionRow(icon: Icons.reply_rounded, color: Gx.violet, label: 'Reply',
             onTap: () { setState(() => _replyMsg = msg); Navigator.pop(c); }, dark: dark),
+          _ActionRow(icon: Icons.forward_rounded, color: Gx.mint, label: 'Forward',
+            onTap: () {
+              Navigator.pop(c);
+              _showForwardSheet(msg);
+            }, dark: dark),
           _ActionRow(icon: Icons.copy_rounded, color: Gx.cyan, label: 'Copy Text',
             onTap: () {
               Clipboard.setData(ClipboardData(text: msg['text'] ?? ''));
@@ -1709,7 +2064,10 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                 key: ValueKey(_searching), color: Colors.white, size: 21)),
             onPressed: () => setState(() { _searching = !_searching; _srchQ = ''; _srcC.clear(); }),
           ),
-          IconButton(icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 21), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 21),
+            onPressed: () => _chatMoreMenu(),
+          ),
         ],
       ),
       body: Column(children: [
@@ -1742,6 +2100,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
             }
             return ListView.builder(
               controller: _scroll,
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               itemCount: msgs.length,
               itemBuilder: (ctx, i) {
@@ -1762,7 +2121,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
           },
         )),
         if (_replyMsg != null) _ReplyBar(msg: _replyMsg!, myId: myId, onCancel: () => setState(() => _replyMsg = null), dark: dark),
-        _MsgInput(ctrl: _msgC, hasText: _hasText, dark: dark, sendAc: _sendAc, onTyping: _onTyping, onSend: _send, onImage: _imgSheet),
+        _MsgInput(ctrl: _msgC, hasText: _hasText, dark: dark, sendAc: _sendAc, onTyping: _onTyping, onSend: _send, onImage: _imgSheet, onLink: _linkSheet, onEmoji: _emojiSheet),
       ]),
     );
   }
@@ -1836,8 +2195,20 @@ class _BubbleBody extends StatelessWidget {
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (msg['replyTo'] is Map) _ReplyPreview(reply: Map<String,dynamic>.from(msg['replyTo'] as Map), myId: myId, isMe: isMe, dark: dark),
+      if (msg['forwarded'] == true)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.forward_rounded, size: 12, color: isMe ? Colors.white54 : Gx.tx2),
+            const SizedBox(width: 3),
+            Text('Forwarded', style: TextStyle(fontSize: 10.5, color: isMe ? Colors.white54 : Gx.tx2, fontStyle: FontStyle.italic)),
+          ]),
+        ),
       if (msg['type'] == 'image')
         _ImgContent(url: msg['text'])
+      else if (msg['type'] == 'link')
+        Padding(padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+          child: _LinkEmbed(url: msg['text'] ?? '', isMe: isMe, dark: dark))
       else
         Padding(padding: const EdgeInsets.fromLTRB(13, 10, 13, 4),
           child: Text(msg['text'] ?? '', style: TextStyle(color: tx, fontSize: 15.5, height: 1.45))),
@@ -1847,8 +2218,15 @@ class _BubbleBody extends StatelessWidget {
             style: TextStyle(fontSize: 10.5, color: tsTx)),
           if (isMe) ...[
             const SizedBox(width: 4),
-            Icon(msg['read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
-              size: 14, color: msg['read'] == true ? Gx.readClr : Gx.tx2),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              child: Icon(
+                msg['read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
+                key: ValueKey(msg['read']),
+                size: 14,
+                color: msg['read'] == true ? Gx.readClr : Gx.tx2,
+              ),
+            ),
           ],
         ])),
     ]),
@@ -1963,9 +2341,10 @@ class _MsgInput extends StatelessWidget {
   final bool hasText, dark;
   final AnimationController sendAc;
   final ValueChanged<String> onTyping;
-  final VoidCallback onSend, onImage;
+  final VoidCallback onSend, onImage, onLink, onEmoji;
   const _MsgInput({required this.ctrl, required this.hasText, required this.dark,
-    required this.sendAc, required this.onTyping, required this.onSend, required this.onImage});
+    required this.sendAc, required this.onTyping, required this.onSend,
+    required this.onImage, required this.onLink, required this.onEmoji});
   @override
   Widget build(BuildContext ctx) => Container(
     padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
@@ -1981,7 +2360,29 @@ class _MsgInput extends StatelessWidget {
           decoration: BoxDecoration(shape: BoxShape.circle,
             color: dark ? Gx.d4 : Gx.l2,
             border: Border.all(color: dark ? Gx.divD : Gx.divL, width: 0.8)),
-          child: Icon(Icons.attach_file_rounded, size: 19, color: dark ? Gx.tx2 : Gx.tx2L),
+          child: Icon(Icons.image_outlined, size: 19, color: dark ? Gx.tx2 : Gx.tx2L),
+        ),
+      ),
+      const SizedBox(width: 6),
+      _TapScale(
+        onTap: onEmoji,
+        child: Container(
+          width: 40, height: 40, margin: const EdgeInsets.only(bottom: 2),
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: dark ? Gx.d4 : Gx.l2,
+            border: Border.all(color: dark ? Gx.divD : Gx.divL, width: 0.8)),
+          child: const Text('😊', style: TextStyle(fontSize: 20)),
+        ),
+      ),
+      const SizedBox(width: 6),
+      _TapScale(
+        onTap: onLink,
+        child: Container(
+          width: 40, height: 40, margin: const EdgeInsets.only(bottom: 2),
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: dark ? Gx.d4 : Gx.l2,
+            border: Border.all(color: dark ? Gx.divD : Gx.divL, width: 0.8)),
+          child: Icon(Icons.link_rounded, size: 19, color: dark ? Gx.tx2 : Gx.tx2L),
         ),
       ),
       const SizedBox(width: 8),
@@ -2409,6 +2810,202 @@ class _GradientBar extends StatelessWidget {
     height: 3.5, width: 52, margin: const EdgeInsets.only(bottom: 16),
     decoration: BoxDecoration(gradient: Gx.gBrand, borderRadius: BorderRadius.circular(2)),
   );
+}
+
+// ── FindTab empty state — show own @username ──────
+class _FindEmptyView extends StatelessWidget {
+  final String myId;
+  const _FindEmptyView({required this.myId});
+  @override
+  Widget build(BuildContext ctx) {
+    final dark = Theme.of(ctx).brightness == Brightness.dark;
+    return StreamBuilder(
+      stream: FirebaseDatabase.instance.ref('users/$myId').onValue,
+      builder: (_, snap) {
+        final d = (snap.hasData && snap.data!.snapshot.value != null)
+            ? Map<String,dynamic>.from(snap.data!.snapshot.value as Map? ?? {}) : <String,dynamic>{};
+        final username = d['username'] ?? '';
+        return Center(child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(gradient: Gx.gBrand2, borderRadius: BorderRadius.circular(22),
+                boxShadow: Gx.glow(Gx.violet, b: 24)),
+              child: const Icon(Icons.person_search_rounded, color: Colors.white, size: 36),
+            ),
+            const SizedBox(height: 20),
+            Text('Find People', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L,
+              fontSize: 20, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text('Search by @username above to add friends',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 13.5)),
+            if (username.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text('Share your username', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 12)),
+              const SizedBox(height: 8),
+              _TapScale(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: '@$username'));
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                    content: Text('Username copied to clipboard!'),
+                    behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)));
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                  decoration: BoxDecoration(
+                    gradient: Gx.gBrand,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: Gx.glow(Gx.violet, b: 14)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.alternate_email_rounded, color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Text('@$username', style: const TextStyle(color: Colors.white, fontSize: 15,
+                      fontWeight: FontWeight.w800, letterSpacing: 0.3)),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.copy_rounded, color: Colors.white70, size: 14),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text('Tap to copy & share', style: TextStyle(color: dark ? Gx.tx3 : Gx.tx3L, fontSize: 11)),
+            ],
+          ]),
+        ));
+      },
+    );
+  }
+}
+
+// ── Online Friends Horizontal Strip ────────────────
+class _OnlineFriendsStrip extends StatelessWidget {
+  final List<String> friendIds;
+  final String myId;
+  final bool dark;
+  const _OnlineFriendsStrip({required this.friendIds, required this.myId, required this.dark});
+
+  @override
+  Widget build(BuildContext ctx) {
+    if (friendIds.isEmpty) return const SizedBox();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _SectionLabel('ONLINE NOW'),
+      SizedBox(
+        height: 90,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+          itemCount: friendIds.length,
+          itemBuilder: (_, i) => StreamBuilder(
+            stream: FirebaseDatabase.instance.ref('users/${friendIds[i]}').onValue,
+            builder: (_, snap) {
+              if (!snap.hasData || snap.data!.snapshot.value == null) return const SizedBox();
+              final u = Map<String,dynamic>.from(snap.data!.snapshot.value as Map? ?? {});
+              final online = u['status'] == 'online';
+              if (!online) return const SizedBox();
+              return _TapScale(
+                onTap: () => _gaxPush(ctx, ChatRoom(target: u)),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    _Avi(pfp: u['pfp'] ?? '', online: true, radius: 28),
+                    const SizedBox(height: 6),
+                    SizedBox(width: 62, child: Text(
+                      u['name'] ?? '',
+                      maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                        color: dark ? Gx.tx1 : Gx.tx1L),
+                    )),
+                  ]),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
+// ── URL Link Embed in chat bubble ──────────────────
+class _LinkEmbed extends StatelessWidget {
+  final String url;
+  final bool isMe, dark;
+  const _LinkEmbed({required this.url, required this.isMe, required this.dark});
+
+  String get _domain {
+    try {
+      final uri = Uri.parse(url);
+      return uri.host.replaceFirst('www.', '');
+    } catch (_) { return url; }
+  }
+
+  @override
+  Widget build(BuildContext ctx) {
+    final bubbleBg = isMe
+        ? Colors.white.withOpacity(0.12)
+        : (dark ? Gx.d3 : Gx.l2);
+    final tx = isMe ? Colors.white : (dark ? Gx.tx1 : Gx.tx1L);
+    final tx2 = isMe ? Colors.white70 : (dark ? Gx.tx2 : Gx.tx2L);
+
+    return GestureDetector(
+      onTap: () {
+        // Open URL — copy to clipboard as fallback (no url_launcher dep)
+        Clipboard.setData(ClipboardData(text: url));
+      },
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 240),
+        margin: const EdgeInsets.only(top: 2),
+        decoration: BoxDecoration(
+          color: bubbleBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Gx.violet.withOpacity(0.3)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Header bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Gx.violet.withOpacity(0.25), Gx.cyan.withOpacity(0.10)],
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: Row(children: [
+              Icon(Icons.link_rounded, size: 14, color: Gx.violet),
+              const SizedBox(width: 6),
+              Expanded(child: Text(_domain,
+                style: TextStyle(fontSize: 11, color: Gx.violet, fontWeight: FontWeight.w700),
+                maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ]),
+          ),
+          // URL text
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 7, 10, 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(url,
+                style: TextStyle(fontSize: 12, color: tx2, decoration: TextDecoration.underline,
+                  decorationColor: tx2),
+                maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: Gx.gBrand,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.open_in_new_rounded, size: 11, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text('Tap to copy link', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
 }
 
 class _SheetHandle extends StatelessWidget {
