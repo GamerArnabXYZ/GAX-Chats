@@ -105,7 +105,7 @@ ThemeData gaxTheme(bool dark) {
       centerTitle: false,
       systemOverlayStyle: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: dark ? Brightness.light : Brightness.light,
+        statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
         systemNavigationBarColor: dark ? Gx.navD : Gx.navL,
         systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
       ),
@@ -1664,13 +1664,9 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
       'chats/$chatId/lastTs': ServerValue.timestamp,
       'chats/$chatId/updatedAt': ServerValue.timestamp,
     });
-    // Increment unread counter for receiver (they'll reset on open)
+    // Atomic unread increment for receiver (no race condition)
     FirebaseDatabase.instance.ref('chats/$chatId/unread/$otherUid')
-        .get().then((snap) {
-      final cur = (snap.value is int ? snap.value as int : 0);
-      FirebaseDatabase.instance.ref('chats/$chatId/unread/$otherUid')
-          .set(cur + 1).catchError((_){});
-    });
+        .set(ServerValue.increment(1)).catchError((_){});
   }
 
   void _initChatMeta() {
@@ -1830,7 +1826,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
             onTap: () {
               Navigator.pop(c);
               showDialog(context: context,
-                builder: (_) => ProfileDialog(u: widget.target));
+                builder: (_) => ProfileDialog(user: widget.target));
             }, dark: dark),
           _ActionRow(icon: Icons.push_pin_outlined, color: Gx.indigo,
             label: _pinMsg != null ? 'Unpin Message' : 'No Pinned Message',
@@ -2459,8 +2455,8 @@ class _DateChip extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
-  final IconData icon; final Color color; final String label; final VoidCallback onTap; final bool dark;
-  const _ActionRow({required this.icon, required this.color, required this.label, required this.onTap, required this.dark});
+  final IconData icon; final Color color; final String label; final VoidCallback? onTap; final bool dark;
+  const _ActionRow({required this.icon, required this.color, required this.label, this.onTap, required this.dark});
   @override
   Widget build(BuildContext ctx) => ListTile(
     dense: true, onTap: onTap,
