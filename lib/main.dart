@@ -5,7 +5,20 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:math' as math;
+
+// ═══════════════════════════════════════════════════
+//  URL LAUNCHER HELPER
+// ═══════════════════════════════════════════════════
+Future<void> _openUrl(String raw) async {
+  final url = raw.startsWith('http') ? raw : 'https://$raw';
+  final uri = Uri.tryParse(url);
+  if (uri == null) return;
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
 
 // ═══════════════════════════════════════════════════
 //  DESIGN TOKENS  —  GAX v9.0
@@ -843,10 +856,26 @@ class _SortedChatListState extends State<_SortedChatList> {
   Widget build(BuildContext ctx) {
     final sorted = List<String>.from(widget.friendIds)
       ..sort((a, b) => (_lastTs[b] ?? 0).compareTo(_lastTs[a] ?? 0));
+    final dark = Theme.of(ctx).brightness == Brightness.dark;
     return ListView.builder(
       padding: EdgeInsets.zero,
-      itemCount: sorted.length,
+      itemCount: sorted.length + 1,
       itemBuilder: (ctx, i) {
+        // Footer item — removes the ugly empty gap at bottom
+        if (i == sorted.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Expanded(child: Divider(color: dark ? Gx.divD : Gx.divL, indent: 32, endIndent: 12)),
+                Text('all caught up', style: TextStyle(
+                  color: dark ? Gx.tx3 : Gx.tx3L, fontSize: 11.5,
+                  fontWeight: FontWeight.w500, letterSpacing: 0.4)),
+                Expanded(child: Divider(color: dark ? Gx.divD : Gx.divL, indent: 12, endIndent: 32)),
+              ]),
+            ]),
+          );
+        }
         final fid    = sorted[i];
         final unread = _unread[fid] ?? 0;
         return _AnimatedListItem(
@@ -915,7 +944,12 @@ class _ConvRow extends StatelessWidget {
               final rawMap = mSnap.data!.snapshot.value as Map? ?? {};
               if (rawMap.isNotEmpty) {
                 final v = Map.from(rawMap.values.first as Map? ?? {});
-                last     = v['type'] == 'image' ? '📷 Image' : v['type'] == 'link' ? '🔗 Link' : (v['text']?.toString() ?? '');
+                final rawText = v['text']?.toString() ?? '';
+                last     = v['type'] == 'image' ? '📷 Image'
+                    : v['type'] == 'link' ? '🔗 Link'
+                    : rawText.contains('http') || rawText.contains('www.')
+                        ? '🔗 ${rawText.length > 40 ? rawText.substring(0, 40) + '…' : rawText}'
+                        : rawText;
                 ts       = v['timestamp'] is int ? v['timestamp'] as int : null;
                 hasUnread= unread > 0;
                 mine     = v['senderId'] == myId;
@@ -950,6 +984,7 @@ class _ConvRow extends StatelessWidget {
                               final typing = tSnap.hasData && tSnap.data!.snapshot.value == true;
                               return AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 200),
+                                alignment: Alignment.centerLeft,
                                 child: typing
                                   ? Row(key: const ValueKey('t'), mainAxisSize: MainAxisSize.min, children: [
                                       _DotsLoader(small: true), const SizedBox(width: 6),
@@ -2207,7 +2242,7 @@ class _BubbleBody extends StatelessWidget {
           child: _LinkEmbed(url: msg['text'] ?? '', isMe: isMe, dark: dark))
       else
         Padding(padding: const EdgeInsets.fromLTRB(13, 10, 13, 4),
-          child: Text(msg['text'] ?? '', style: TextStyle(color: tx, fontSize: 15.5, height: 1.45))),
+          child: _AutoContent(text: msg['text'] ?? '', tx: tx, isMe: isMe, dark: dark)),
       Padding(padding: const EdgeInsets.fromLTRB(12, 0, 10, 7),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(DateFormat('hh:mm a').format(DateTime.fromMillisecondsSinceEpoch(msg['timestamp'] is int ? msg['timestamp'] as int : 0)),
@@ -2244,9 +2279,16 @@ class _ReplyPreview extends StatelessWidget {
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(reply['senderId'] == myId ? 'You' : 'Them',
         style: const TextStyle(color: Gx.violet, fontSize: 11.5, fontWeight: FontWeight.w700)),
-      Text(reply['type'] == 'image' ? '📷 Image' : (reply['text'] ?? ''),
-        maxLines: 1, overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: isMe ? Colors.white70 : (dark ? Gx.tx2 : Gx.tx2L), fontSize: 12.5)),
+      Builder(builder: (ctx) {
+        final rt = reply['text']?.toString() ?? '';
+        final preview = reply['type'] == 'image' ? '📷 Image'
+            : reply['type'] == 'link' ? '🔗 Link'
+            : (rt.startsWith('http') || rt.startsWith('www')) ? '🔗 ${rt.length > 35 ? rt.substring(0, 35) + '…' : rt}'
+            : rt;
+        return Text(preview,
+          maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: isMe ? Colors.white70 : (dark ? Gx.tx2 : Gx.tx2L), fontSize: 12.5));
+      }),
     ]),
   );
 }
@@ -2324,8 +2366,15 @@ class _ReplyBar extends StatelessWidget {
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(msg['senderId'] == myId ? 'Replying to yourself' : 'Replying',
           style: const TextStyle(color: Gx.violet, fontSize: 12, fontWeight: FontWeight.w700)),
-        Text(msg['type'] == 'image' ? '📷 Image' : (msg['text'] ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 12)),
+        Builder(builder: (ctx) {
+          final pt = msg['text']?.toString() ?? '';
+          final ap = msg['type'] == 'image' ? '📷 Image'
+              : msg['type'] == 'link' ? '🔗 Link'
+              : (pt.startsWith('http') || pt.startsWith('www')) ? '🔗 Link'
+              : pt;
+          return Text(ap, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 12));
+        }),
       ])),
       IconButton(icon: Icon(Icons.close_rounded, size: 18, color: dark ? Gx.tx2 : Gx.tx2L), onPressed: onCancel),
     ]),
@@ -2924,6 +2973,174 @@ class _OnlineFriendsStrip extends StatelessWidget {
 }
 
 // ── URL Link Embed in chat bubble ──────────────────
+// ═══════════════════════════════════════════════════
+//  AUTO CONTENT — smart URL + image detector
+// ═══════════════════════════════════════════════════
+class _AutoContent extends StatelessWidget {
+  final String text;
+  final Color tx;
+  final bool isMe, dark;
+  const _AutoContent({required this.text, required this.tx, required this.isMe, required this.dark});
+
+  // Image extensions — auto-embed
+  static const _imgExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+
+  // URL regex — detects http://, https://, www.
+  static final _urlRegex = RegExp(
+    r'(https?://[^\s]+|www\.[^\s]+)',
+    caseSensitive: false,
+  );
+
+  bool _isImageUrl(String url) {
+    final lower = url.toLowerCase().split('?').first; // ignore query params
+    return _imgExts.any((ext) => lower.endsWith(ext));
+  }
+
+  String _ensureScheme(String url) =>
+      url.startsWith('http') ? url : 'https://$url';
+
+  @override
+  Widget build(BuildContext ctx) {
+    // If no URL found → plain text
+    if (!_urlRegex.hasMatch(text)) {
+      return Text(text, style: TextStyle(color: tx, fontSize: 15.5, height: 1.45));
+    }
+
+    // Split text into segments
+    final segments = <_Segment>[];
+    int lastEnd = 0;
+    for (final match in _urlRegex.allMatches(text)) {
+      // Text before URL
+      if (match.start > lastEnd) {
+        segments.add(_Segment(text.substring(lastEnd, match.start), _SegType.text));
+      }
+      final url = _ensureScheme(match.group(0)!);
+      if (_isImageUrl(url)) {
+        segments.add(_Segment(url, _SegType.image));
+      } else {
+        segments.add(_Segment(url, _SegType.link));
+      }
+      lastEnd = match.end;
+    }
+    // Remaining text after last URL
+    if (lastEnd < text.length) {
+      segments.add(_Segment(text.substring(lastEnd), _SegType.text));
+    }
+
+    // If only ONE segment and it's a pure image — render full-width
+    if (segments.length == 1 && segments.first.type == _SegType.image) {
+      return _AutoImageEmbed(url: segments.first.content, isMe: isMe, dark: dark);
+    }
+    if (segments.length == 1 && segments.first.type == _SegType.link) {
+      return _LinkEmbed(url: segments.first.content, isMe: isMe, dark: dark);
+    }
+
+    // Mixed content — build column
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: segments.map((seg) {
+        switch (seg.type) {
+          case _SegType.text:
+            final trimmed = seg.content.trim();
+            if (trimmed.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(trimmed, style: TextStyle(color: tx, fontSize: 15.5, height: 1.45)),
+            );
+          case _SegType.image:
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _AutoImageEmbed(url: seg.content, isMe: isMe, dark: dark),
+            );
+          case _SegType.link:
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _LinkEmbed(url: seg.content, isMe: isMe, dark: dark),
+            );
+        }
+      }).toList(),
+    );
+  }
+}
+
+enum _SegType { text, image, link }
+
+class _Segment {
+  final String content;
+  final _SegType type;
+  const _Segment(this.content, this.type);
+}
+
+// Auto-detected image embed (no button needed)
+class _AutoImageEmbed extends StatelessWidget {
+  final String url;
+  final bool isMe, dark;
+  const _AutoImageEmbed({required this.url, required this.isMe, required this.dark});
+
+  @override
+  Widget build(BuildContext ctx) {
+    return GestureDetector(
+      onTap: () => _openUrl(url),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          alignment: Alignment.bottomLeft,
+          children: [
+            Image.network(
+            url,
+            width: 220, height: 180,
+            fit: BoxFit.cover,
+            cacheWidth: 440,
+            loadingBuilder: (c, ch, p) => p == null ? ch
+                : Container(width: 220, height: 180,
+                    decoration: BoxDecoration(
+                      color: isMe ? Colors.white.withOpacity(0.08) : (dark ? Gx.d4 : Gx.l2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      _GaxSpinner(),
+                      const SizedBox(height: 6),
+                      Text('Loading image…', style: TextStyle(
+                        color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 11)),
+                    ]))),
+            errorBuilder: (c, e, s) => Container(
+              width: 220, height: 70,
+              decoration: BoxDecoration(
+                color: isMe ? Colors.white.withOpacity(0.08) : (dark ? Gx.d4 : Gx.l2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.broken_image_outlined, color: Gx.tx2, size: 26),
+                const SizedBox(height: 4),
+                Text('Could not load image', style: TextStyle(
+                  color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 11)),
+              ]),
+            ),
+          ),
+          // Small "auto detected" label
+          Container(
+            margin: const EdgeInsets.all(5),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.45),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.auto_awesome_rounded, size: 10, color: Colors.white70),
+              SizedBox(width: 3),
+              Text('Auto', style: TextStyle(color: Colors.white70, fontSize: 9.5,
+                fontWeight: FontWeight.w600)),
+            ]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LinkEmbed extends StatelessWidget {
   final String url;
   final bool isMe, dark;
@@ -2945,10 +3162,7 @@ class _LinkEmbed extends StatelessWidget {
     final tx2 = isMe ? Colors.white70 : (dark ? Gx.tx2 : Gx.tx2L);
 
     return GestureDetector(
-      onTap: () {
-        // Open URL — copy to clipboard as fallback (no url_launcher dep)
-        Clipboard.setData(ClipboardData(text: url));
-      },
+      onTap: () => _openUrl(url),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 240),
         margin: const EdgeInsets.only(top: 2),
