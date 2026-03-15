@@ -76,22 +76,19 @@ class Gx {
 
   // Gradients
   static const gBrand = LinearGradient(colors: [violet, cyan], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const gBrand2= LinearGradient(colors: [violet, Color(0xFFB044FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const gDeep  = LinearGradient(colors: [Color(0xFF080916), Color(0xFF05050E)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
-  static const gHdr   = LinearGradient(colors: [Color(0xFF130F40), Color(0xFF080916)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const gLHdr  = LinearGradient(colors: [Color(0xFF6040E8), Color(0xFF8560FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const gCard  = LinearGradient(colors: [Color(0xFF1F2142), Color(0xFF171933)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const gBrand2= LinearGradient(colors:[violet, Color(0xFFB044FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const gDeep  = LinearGradient(colors:[Color(0xFF080916), Color(0xFF05050E)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
+  static const gHdr   = LinearGradient(colors:[Color(0xFF130F40), Color(0xFF080916)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const gLHdr  = LinearGradient(colors:[Color(0xFF6040E8), Color(0xFF8560FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const gCard  = LinearGradient(colors:[Color(0xFF1F2142), Color(0xFF171933)], begin: Alignment.topLeft, end: Alignment.bottomRight);
 
   // Nav bar light bg
   static const navL = Color(0xFFFFFFFF);
   static const navD = Color(0xFF0C0D1E);
 
-  static List<BoxShadow> glow(Color c, {double b = 20, double s = -2}) =>
-      [BoxShadow(color: c.withOpacity(0.30), blurRadius: b, spreadRadius: s)];
-  static List<BoxShadow> glow2(Color c) =>
-      [BoxShadow(color: c.withOpacity(0.18), blurRadius: 28, spreadRadius: -4, offset: const Offset(0, 8))];
-  static List<BoxShadow> softShadow(bool dark) =>
-      [BoxShadow(color: Colors.black.withOpacity(dark ? 0.30 : 0.10), blurRadius: 12, offset: const Offset(0, 3))];
+  static List<BoxShadow> glow(Color c, {double b = 20, double s = -2}) =>[BoxShadow(color: c.withOpacity(0.30), blurRadius: b, spreadRadius: s)];
+  static List<BoxShadow> glow2(Color c) =>[BoxShadow(color: c.withOpacity(0.18), blurRadius: 28, spreadRadius: -4, offset: const Offset(0, 8))];
+  static List<BoxShadow> softShadow(bool dark) =>[BoxShadow(color: Colors.black.withOpacity(dark ? 0.30 : 0.10), blurRadius: 12, offset: const Offset(0, 3))];
 }
 
 // ═══════════════════════════════════════════════════
@@ -153,9 +150,8 @@ ThemeData gaxTheme(bool dark) {
 }
 
 // ═══════════════════════════════════════════════════
-//  THEME CONTROLLER  — auto + manual
+//  THEME CONTROLLER
 // ═══════════════════════════════════════════════════
-// Auto mode options
 enum AutoThemeMode { system, timeBased }
 
 class ThemeCtrl extends ChangeNotifier {
@@ -171,12 +167,10 @@ class ThemeCtrl extends ChangeNotifier {
   bool get isDarkNow {
     if (_mode == ThemeMode.dark) return true;
     if (_mode == ThemeMode.light) return false;
-    // system mode - read actual platform brightness
     return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
   }
 
   ThemeCtrl() {
-    // Listen to system brightness changes (phone night mode, auto-brightness)
     WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = _onSystemBrightnessChanged;
     _startAutoCheck();
   }
@@ -347,13 +341,13 @@ class _SplashState extends State<_Splash> with TickerProviderStateMixin {
   Widget build(BuildContext ctx) => Scaffold(
     backgroundColor: Gx.d0,
     body: Center(child: FadeTransition(opacity: _fade, child: SlideTransition(position: _rise,
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ScaleTransition(scale: _scalePulse, child: Stack(alignment: Alignment.center, children: [
+      child: Column(mainAxisSize: MainAxisSize.min, children:[
+        ScaleTransition(scale: _scalePulse, child: Stack(alignment: Alignment.center, children:[
           AnimatedBuilder(animation: _ring, builder: (_, __) => Transform.rotate(
             angle: _ring.value * 2 * math.pi,
             child: Container(width: 116, height: 116, decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: SweepGradient(colors: [
+              gradient: SweepGradient(colors:[
                 Gx.violet.withOpacity(0.55), Colors.transparent,
                 Gx.cyan.withOpacity(0.45), Colors.transparent,
               ]),
@@ -413,14 +407,14 @@ class _LoginState extends State<LoginScreen> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: Gx.d0,
       resizeToAvoidBottomInset: true,
-      body: Stack(children: [
+      body: Stack(children:[
         AnimatedBuilder(animation: _bgAc, builder: (_, __) => CustomPaint(painter: _NebulaPainter(_bgAc.value), size: MediaQuery.of(ctx).size)),
         SafeArea(child: FadeTransition(opacity: _fadeA, child: SlideTransition(position: _slideA,
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 26),
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: h - MediaQuery.of(ctx).padding.top),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children:[
                 SizedBox(height: h * .09),
                 _GaxLogo(size: 70),
                 const SizedBox(height: 18),
@@ -428,7 +422,7 @@ class _LoginState extends State<LoginScreen> with TickerProviderStateMixin {
                 const SizedBox(height: 7),
                 const Text('Sign in · account is auto-created', style: TextStyle(color: Gx.tx2, fontSize: 12.5, letterSpacing: 0.2)),
                 SizedBox(height: h * .06),
-                _GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
                   _GradientBar(),
                   const SizedBox(height: 16),
                   const Text('Welcome to GAX', style: TextStyle(color: Gx.tx1, fontSize: 21, fontWeight: FontWeight.w800)),
@@ -448,7 +442,7 @@ class _LoginState extends State<LoginScreen> with TickerProviderStateMixin {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                       decoration: BoxDecoration(color: Gx.err.withOpacity(0.1), borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Gx.err.withOpacity(0.3))),
-                      child: Row(children: [
+                      child: Row(children:[
                         const Icon(Icons.warning_amber_rounded, size: 14, color: Gx.err), const SizedBox(width: 8),
                         Expanded(child: Text(_err!, style: const TextStyle(color: Gx.err, fontSize: 12))),
                       ]),
@@ -457,7 +451,7 @@ class _LoginState extends State<LoginScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 22),
                   _GaxBtn(onTap: _busy ? null : _auth, child: _busy
                       ? const _GaxSpinner()
-                      : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      : const Row(mainAxisAlignment: MainAxisAlignment.center, children:[
                           Text('Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
                           SizedBox(width: 8),
                           Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
@@ -478,12 +472,7 @@ class _NebulaPainter extends CustomPainter {
   _NebulaPainter(this.t);
   @override
   void paint(Canvas canvas, Size s) {
-    for (final b in [
-      [0.14, 0.18, 240.0, Gx.violet],
-      [0.84, 0.14, 180.0, Gx.cyan],
-      [0.76, 0.82, 200.0, Gx.indigo],
-      [0.08, 0.78, 150.0, Gx.violet],
-      [0.5, 0.5, 130.0, Gx.cyan],
+    for (final b in [[0.14, 0.18, 240.0, Gx.violet],[0.84, 0.14, 180.0, Gx.cyan],[0.76, 0.82, 200.0, Gx.indigo],[0.08, 0.78, 150.0, Gx.violet],[0.5, 0.5, 130.0, Gx.cyan],
     ]) {
       final dx = math.sin(t * math.pi * 2 + (b[0] as double) * 7) * 32;
       final dy = math.cos(t * math.pi * 2 + (b[1] as double) * 5) * 32;
@@ -537,14 +526,14 @@ class _PSState extends State<ProfileSetup> {
         backgroundColor: dark ? Gx.d3 : Gx.violet,
         elevation: 0,
         leading: const SizedBox.shrink(),
-        title: Row(children: [
+        title: Row(children:[
           _GaxLogo(size: 28),
           const SizedBox(width: 10),
           const Text('Create Profile',
             style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
         ]),
       ),
-      body: ListView(padding: const EdgeInsets.all(24), children: [
+      body: ListView(padding: const EdgeInsets.all(24), children:[
         const SizedBox(height: 8),
         Center(child: _GaxLogo(size: 64)),
         const SizedBox(height: 10),
@@ -598,14 +587,11 @@ class _MainState extends State<MainScreen> {
       backgroundColor: dark ? Gx.d1 : Gx.l0,
       resizeToAvoidBottomInset: false,
       appBar: _GaxAppBar(tab: _tab, dark: dark, tc: widget.tc, myId: myId),
-
-      // ── Flutter native NavigationBar — works on EVERY phone ──
       bottomNavigationBar: _buildNavBar(ctx, myId, dark, bg),
-
       body: PageView(
         controller: _pc,
         physics: const NeverScrollableScrollPhysics(),
-        children: [
+        children:[
           ChatsTab(myId: myId),
           const FindTab(),
           SocialTab(myId: myId),
@@ -637,13 +623,10 @@ class _MainState extends State<MainScreen> {
   }
 
   Widget _buildNavBar(BuildContext ctx, String myId, bool dark, Color bg) {
-    const icons = [
-      [Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded],
-      [Icons.explore_outlined,             Icons.explore_rounded],
-      [Icons.people_outline_rounded,       Icons.people_rounded],
-      [Icons.person_outline_rounded,       Icons.person_rounded],
+    const icons = [[Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded],
+      [Icons.explore_outlined,             Icons.explore_rounded],[Icons.people_outline_rounded,       Icons.people_rounded],[Icons.person_outline_rounded,       Icons.person_rounded],
     ];
-    const labels = ['Chats', 'Find', 'Social', 'Profile'];
+    const labels =['Chats', 'Find', 'Social', 'Profile'];
 
     final inactiveClr = dark ? const Color(0xFF4A4B6A) : const Color(0xFF9999BB);
     final activeClr   = Gx.violet;
@@ -658,7 +641,6 @@ class _MainState extends State<MainScreen> {
           data: Theme.of(ctx).copyWith(
             navigationBarTheme: NavigationBarThemeData(
               backgroundColor: bg,
-              // Rounded pill indicator with gradient via ShaderMask trick
               indicatorColor: Gx.violet.withOpacity(0.18),
               indicatorShape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -687,15 +669,14 @@ class _MainState extends State<MainScreen> {
               height: 64,
             ),
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            // Top divider line
+          child: Column(mainAxisSize: MainAxisSize.min, children:[
             Divider(height: 1, thickness: 0.8,
               color: dark ? const Color(0xFF1E1F38) : const Color(0xFFE0E0EE)),
             NavigationBar(
               selectedIndex: _tab,
               onDestinationSelected: _goTab,
               animationDuration: const Duration(milliseconds: 300),
-              destinations: [
+              destinations:[
                 _navDest(0, icons, labels, reqCnt, activeClr, inactiveClr),
                 _navDest(1, icons, labels, reqCnt, activeClr, inactiveClr),
                 _navDest(2, icons, labels, reqCnt, activeClr, inactiveClr),
@@ -716,7 +697,7 @@ class _GaxAppBar extends StatelessWidget implements PreferredSizeWidget {
   final int tab; final bool dark; final ThemeCtrl tc; final String myId;
   const _GaxAppBar({required this.tab, required this.dark, required this.tc, required this.myId});
 
-  static const _titles = ['Chats', 'Discover', 'Social', 'Profile'];
+  static const _titles =['Chats', 'Discover', 'Social', 'Profile'];
 
   @override Size get preferredSize => const Size.fromHeight(58);
 
@@ -727,7 +708,7 @@ class _GaxAppBar extends StatelessWidget implements PreferredSizeWidget {
       color: bg,
       child: SafeArea(bottom: false, child: SizedBox(height: 58, child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: Row(children: [
+        child: Row(children:[
           const SizedBox(width: 6),
           _GaxLogo(size: 32),
           const SizedBox(width: 10),
@@ -749,7 +730,7 @@ class _GaxAppBar extends StatelessWidget implements PreferredSizeWidget {
               if (v == 'theme') tc.setDark(!tc.isDarkNow);
               if (v == 'logout') _confirmLogout(ctx);
             },
-            itemBuilder: (_) => [
+            itemBuilder: (_) =>[
               _mi('auto', tc.auto ? Icons.brightness_auto : Icons.brightness_auto_outlined,
                 tc.auto ? 'Auto Theme: ON' : 'Auto Theme: OFF', dark),
               _mi('theme', tc.isDarkNow ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -764,7 +745,7 @@ class _GaxAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   PopupMenuItem<String> _mi(String val, IconData icon, String label, bool dark, {Color? clr}) =>
-      PopupMenuItem(value: val, child: Row(children: [
+      PopupMenuItem(value: val, child: Row(children:[
         Icon(icon, size: 17, color: clr ?? (dark ? Gx.tx2 : Gx.tx2L)),
         const SizedBox(width: 10),
         Text(label, style: TextStyle(color: clr ?? (dark ? Gx.tx1 : Gx.tx1L), fontSize: 14)),
@@ -775,10 +756,6 @@ class _GaxAppBar extends StatelessWidget implements PreferredSizeWidget {
     confirmLabel: 'Sign Out', confirmClr: Gx.rose,
     onConfirm: () { Navigator.pop(ctx); FirebaseAuth.instance.signOut(); });
 }
-
-// ═══════════════════════════════════════════════════
-//  ANIMATED BOTTOM NAV BAR
-// ═══════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════
 //  CHATS TAB
@@ -795,13 +772,11 @@ class ChatsTab extends StatelessWidget {
       final rawMap = snap.data!.snapshot.value as Map? ?? {};
       final ids = rawMap.keys.map((k) => k.toString()).toList();
       if (ids.isEmpty) return _emptyView(Icons.chat_bubble_outline_rounded, 'No Conversations', 'Find friends and start chatting');
-      // Per-chatId streams — no root read needed
       return _SortedChatList(myId: myId, friendIds: ids);
     },
   );
 }
 
-// Streams each chatId individually, sorts by lastTs in memory
 class _SortedChatList extends StatefulWidget {
   final String myId;
   final List<String> friendIds;
@@ -861,12 +836,11 @@ class _SortedChatListState extends State<_SortedChatList> {
       padding: EdgeInsets.zero,
       itemCount: sorted.length + 1,
       itemBuilder: (ctx, i) {
-        // Footer item — removes the ugly empty gap at bottom
         if (i == sorted.length) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 32),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.center, children:[
                 Expanded(child: Divider(color: dark ? Gx.divD : Gx.divL, indent: 32, endIndent: 12)),
                 Text('all caught up', style: TextStyle(
                   color: dark ? Gx.tx3 : Gx.tx3L, fontSize: 11.5,
@@ -905,11 +879,11 @@ class _SortedChatListState extends State<_SortedChatList> {
               padding: const EdgeInsets.only(right: 24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.transparent, Gx.rose.withOpacity(0.85)],
+                  colors:[Colors.transparent, Gx.rose.withOpacity(0.85)],
                   begin: Alignment.centerLeft, end: Alignment.centerRight,
                 ),
               ),
-              child: const Column(mainAxisSize: MainAxisSize.min, children: [
+              child: const Column(mainAxisSize: MainAxisSize.min, children:[
                 Icon(Icons.delete_outline_rounded, color: Colors.white, size: 26),
                 SizedBox(height: 4),
                 Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
@@ -937,35 +911,30 @@ class _ConvRow extends StatelessWidget {
         if (!uSnap.hasData || uSnap.data!.snapshot.value == null) return const SizedBox();
         final u = Map.from(uSnap.data!.snapshot.value as Map? ?? {});
         return StreamBuilder(
-          stream: FirebaseDatabase.instance.ref('messages/$chatId').limitToLast(1).onValue,
-          builder: (_, mSnap) {
+          stream: FirebaseDatabase.instance.ref('chats/$chatId').onValue,
+          builder: (_, cSnap) {
             String last = 'Tap to start chatting'; int? ts; bool hasUnread = false; bool mine = false;
-            if (mSnap.hasData && mSnap.data!.snapshot.value != null) {
-              final rawMap = mSnap.data!.snapshot.value as Map? ?? {};
+            if (cSnap.hasData && cSnap.data!.snapshot.value != null) {
+              final rawMap = cSnap.data!.snapshot.value as Map? ?? {};
               if (rawMap.isNotEmpty) {
-                final v = Map.from(rawMap.values.first as Map? ?? {});
-                final rawText = v['text']?.toString() ?? '';
-                last     = v['type'] == 'image' ? '📷 Image'
-                    : v['type'] == 'link' ? '🔗 Link'
-                    : rawText.contains('http') || rawText.contains('www.')
-                        ? '🔗 ${rawText.length > 40 ? rawText.substring(0, 40) + '…' : rawText}'
-                        : rawText;
-                ts       = v['timestamp'] is int ? v['timestamp'] as int : null;
-                hasUnread= unread > 0;
-                mine     = v['senderId'] == myId;
+                 final rawText = rawMap['lastMsg']?.toString() ?? '';
+                 last = rawText.isNotEmpty ? rawText : last;
+                 ts = rawMap['lastTs'] as int?;
+                 hasUnread = unread > 0;
+                 mine = rawMap['lastMsgSender'] == myId;
               }
             }
             return _TapScale(
               onTap: () { HapticFeedback.lightImpact(); _gaxPush(ctx, ChatRoom(target: u)); },
               child: Container(
                 color: hasUnread ? Gx.violet.withOpacity(dark ? 0.05 : 0.04) : Colors.transparent,
-                child: Column(children: [
+                child: Column(children:[
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(children: [
                       _Avi(pfp: u['pfp'] ?? '', online: u['status'] == 'online', radius: 27),
                       const SizedBox(width: 13),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
                         Row(children: [
                           Expanded(child: Text(u['name'] ?? '',
                             style: TextStyle(fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w700,
@@ -984,9 +953,8 @@ class _ConvRow extends StatelessWidget {
                               final typing = tSnap.hasData && tSnap.data!.snapshot.value == true;
                               return AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 200),
-                                
                                 child: typing
-                                  ? Row(key: const ValueKey('t'), mainAxisSize: MainAxisSize.min, children: [
+                                  ? Row(key: const ValueKey('t'), mainAxisSize: MainAxisSize.min, children:[
                                       _DotsLoader(small: true), const SizedBox(width: 6),
                                       Text('typing…', style: TextStyle(color: Gx.cyan, fontSize: 12, fontStyle: FontStyle.italic)),
                                     ])
@@ -1042,7 +1010,7 @@ class _FindState extends State<FindTab> {
   Widget build(BuildContext ctx) {
     final myId = FirebaseAuth.instance.currentUser!.uid;
     final dark  = Theme.of(ctx).brightness == Brightness.dark;
-    return Column(children: [
+    return Column(children:[
       Container(
         color: dark ? Gx.d2 : Gx.l1,
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -1052,7 +1020,7 @@ class _FindState extends State<FindTab> {
             borderRadius: BorderRadius.circular(14),
             border: _q.isNotEmpty ? Border.all(color: Gx.violet.withOpacity(0.3)) : null,
           ),
-          child: Row(children: [
+          child: Row(children:[
             const SizedBox(width: 12),
             Icon(Icons.search_rounded, size: 20, color: _q.isNotEmpty ? Gx.violet : Gx.tx2),
             const SizedBox(width: 8),
@@ -1083,7 +1051,6 @@ class _FindState extends State<FindTab> {
                     .startAt(_q.toLowerCase()).endAt('${_q.toLowerCase()}').onValue,
                 builder: (ctx, snap) {
                   if (!snap.hasData) return const Center(child: _GaxSpinner());
-                  // Also stream friends list to hide already-added users
                   return StreamBuilder(
                     stream: FirebaseDatabase.instance.ref('users/$myId/friends').onValue,
                     builder: (ctx, friendSnap) {
@@ -1093,7 +1060,6 @@ class _FindState extends State<FindTab> {
                           friendIds.add(k.toString());
                         });
                       }
-                      // Also stream pending requests sent by me
                       return StreamBuilder(
                         stream: FirebaseDatabase.instance.ref('users/$myId/req').onValue,
                         builder: (ctx, reqSnap) {
@@ -1101,7 +1067,6 @@ class _FindState extends State<FindTab> {
                           (snap.data!.snapshot.value as Map?)?.forEach((k, v) {
                             if (v is Map) {
                               final uid = v['uid']?.toString() ?? '';
-                              // Exclude: self, already friends
                               if (uid != myId && !friendIds.contains(uid)) {
                                 list.add(Map<String,dynamic>.from(v));
                               }
@@ -1111,7 +1076,6 @@ class _FindState extends State<FindTab> {
                           return ListView.builder(
                             itemCount: list.length,
                             itemBuilder: (ctx, i) {
-                              // Check if request already sent
                               final uid = list[i]['uid']?.toString() ?? '';
                               final reqSent = reqSnap.hasData && reqSnap.data!.snapshot.value != null
                                   && (reqSnap.data!.snapshot.value as Map? ?? {}).containsKey(uid);
@@ -1124,7 +1088,7 @@ class _FindState extends State<FindTab> {
                                           color: Gx.violet.withOpacity(0.12),
                                           borderRadius: BorderRadius.circular(20),
                                         ),
-                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                        child: Row(mainAxisSize: MainAxisSize.min, children:[
                                           Icon(Icons.check_rounded, size: 14, color: Gx.violet),
                                           const SizedBox(width: 4),
                                           Text('Sent', style: TextStyle(color: Gx.violet, fontSize: 12, fontWeight: FontWeight.w600)),
@@ -1164,14 +1128,14 @@ class _SocialState extends State<SocialTab> {
     final dark = Theme.of(ctx).brightness == Brightness.dark;
     return CustomScrollView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      slivers: [
+      slivers:[
       SliverToBoxAdapter(child: StreamBuilder(
         stream: FirebaseDatabase.instance.ref('users/${widget.myId}/req').onValue,
         builder: (_, snap) {
           if (!snap.hasData || snap.data!.snapshot.value == null) return const SizedBox();
           final ids = (snap.data!.snapshot.value as Map? ?? {}).keys.map((k) => k.toString()).toList();
           if (ids.isEmpty) return const SizedBox();
-          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
             _SectionLabel('REQUESTS  ·  ${ids.length}'),
             ...ids.asMap().entries.map((e) => StreamBuilder(
               stream: FirebaseDatabase.instance.ref('users/${e.value}').onValue,
@@ -1179,7 +1143,7 @@ class _SocialState extends State<SocialTab> {
                 if (!uSnap.hasData || uSnap.data!.snapshot.value == null) return const SizedBox();
                 final u = Map.from(uSnap.data!.snapshot.value as Map? ?? {});
                 return _AnimatedListItem(index: e.key, child: _ContactRow(u: u,
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children:[
                     _RoundBtn(icon: Icons.close_rounded, color: Gx.rose,
                       onTap: () { HapticFeedback.lightImpact(); FirebaseDatabase.instance.ref('users/${widget.myId}/req/${e.value}').remove().catchError((_){}); }),
                     const SizedBox(width: 8),
@@ -1197,7 +1161,7 @@ class _SocialState extends State<SocialTab> {
           ]);
         },
       )),
-      SliverToBoxAdapter(child: Column(children: [
+      SliverToBoxAdapter(child: Column(children:[
         _SectionLabel('FRIENDS'),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
@@ -1211,10 +1175,8 @@ class _SocialState extends State<SocialTab> {
           if (!snap.hasData || snap.data!.snapshot.value == null)
             return _emptyView(Icons.people_outline_rounded, 'No Friends Yet', 'Start adding people from Find tab');
           final ids = (snap.data!.snapshot.value as Map? ?? {}).keys.map((k) => k.toString()).toList();
-          return Column(children: [
-            // ── Online Now strip ──────────────────────────
+          return Column(children:[
             _OnlineFriendsStrip(friendIds: ids, myId: widget.myId, dark: dark),
-            // ── Full friends list ─────────────────────────
             ...ids.asMap().entries.map((e) => StreamBuilder(
               stream: FirebaseDatabase.instance.ref('users/${e.value}').onValue,
               builder: (_, uSnap) {
@@ -1223,7 +1185,7 @@ class _SocialState extends State<SocialTab> {
                 if (_filter.isNotEmpty && !(u['name'] ?? '').toString().toLowerCase().contains(_filter)) return const SizedBox();
                 return _AnimatedListItem(index: e.key, child: _ContactRow(u: u,
                   onTap: () => _gaxPush(ctx, ChatRoom(target: u)),
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children:[
                     _RoundBtn(icon: Icons.chat_bubble_outline_rounded, color: Gx.violet,
                       onTap: () => _gaxPush(ctx, ChatRoom(target: u))),
                     const SizedBox(width: 8),
@@ -1263,9 +1225,16 @@ class ProfileTab extends StatelessWidget {
       builder: (_, snap) {
         if (!snap.hasData || snap.data!.snapshot.value == null) return const SizedBox();
         final d = Map.from(snap.data!.snapshot.value as Map? ?? {});
-        return CustomScrollView(slivers: [
-          SliverToBoxAdapter(child: _ProfileHeader(d: d, dark: dark, onEdit: () => _editProfile(ctx, d))),
-          SliverToBoxAdapter(child: Column(children: [
+        return CustomScrollView(slivers:[
+          SliverToBoxAdapter(child: _ProfileHeader(d: d, dark: dark, onEdit: () {
+            showModalBottomSheet(
+              context: ctx, isScrollControlled: true, useSafeArea: true,
+              backgroundColor: dark ? Gx.d4 : Colors.white,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+              builder: (c) => _EditProfileSheet(d: d),
+            );
+          })),
+          SliverToBoxAdapter(child: Column(children:[
             const SizedBox(height: 12),
             _SectionLabel('APPEARANCE'),
             _PrefRow(
@@ -1282,10 +1251,10 @@ class ProfileTab extends StatelessWidget {
             AnimatedCrossFade(
               crossFadeState: tc.auto ? CrossFadeState.showFirst : CrossFadeState.showSecond,
               duration: const Duration(milliseconds: 220),
-              firstChild: Column(children: [
+              firstChild: Column(children:[
                 _PrefRow(
                   icon: Icons.phone_android_rounded,
-                  iconGrad: const LinearGradient(colors: [Color(0xFF00509D), Color(0xFF00AAFF)]),
+                  iconGrad: const LinearGradient(colors:[Color(0xFF00509D), Color(0xFF00AAFF)]),
                   title: "Follow Phone's Mode",
                   subtitle: "Uses your phone's dark/light setting",
                   trailing: _RadioDot(selected: tc.autoMode == AutoThemeMode.system),
@@ -1294,7 +1263,7 @@ class ProfileTab extends StatelessWidget {
                 ),
                 _PrefRow(
                   icon: Icons.schedule_rounded,
-                  iconGrad: const LinearGradient(colors: [Color(0xFF805000), Gx.amber]),
+                  iconGrad: const LinearGradient(colors:[Color(0xFF805000), Gx.amber]),
                   title: 'Time-Based',
                   subtitle: 'Dark 7PM–6AM · Light otherwise',
                   trailing: _RadioDot(selected: tc.autoMode == AutoThemeMode.timeBased),
@@ -1314,7 +1283,14 @@ class ProfileTab extends StatelessWidget {
             _SectionLabel('ACCOUNT'),
             _PrefRow(icon: Icons.manage_accounts_outlined,
               iconGrad: const LinearGradient(colors: [Color(0xFF0080CC), Gx.cyan]),
-              title: 'Edit Profile', onTap: () => _editProfile(ctx, d), dark: dark),
+              title: 'Edit Profile', onTap: () {
+                showModalBottomSheet(
+                  context: ctx, isScrollControlled: true, useSafeArea: true,
+                  backgroundColor: dark ? Gx.d4 : Colors.white,
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+                  builder: (c) => _EditProfileSheet(d: d),
+                );
+              }, dark: dark),
             _PrefRow(icon: Icons.notifications_outlined,
               iconGrad: const LinearGradient(colors: [Color(0xFF7B4F00), Gx.amber]),
               title: 'Notifications',
@@ -1325,10 +1301,10 @@ class ProfileTab extends StatelessWidget {
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
               dark: dark),
             _PrefRow(icon: Icons.info_outline_rounded,
-              iconGrad: const LinearGradient(colors: [Color(0xFF1E7D32), Gx.mint]),
+              iconGrad: const LinearGradient(colors:[Color(0xFF1E7D32), Gx.mint]),
               title: 'About GAX', onTap: () => _showAbout(ctx), dark: dark),
             _PrefRow(icon: Icons.logout_rounded,
-              iconGrad: LinearGradient(colors: [Color(0xFF8B0020), Gx.rose]),
+              iconGrad: LinearGradient(colors:[Color(0xFF8B0020), Gx.rose]),
               title: 'Sign Out', titleColor: Gx.rose, dark: dark,
               onTap: () => _gaxDialog(ctx, title: 'Sign Out', body: 'Sign out from GAX Chats?',
                 confirmLabel: 'Sign Out', confirmClr: Gx.rose,
@@ -1349,50 +1325,63 @@ class ProfileTab extends StatelessWidget {
     );
   }
 
-  void _editProfile(BuildContext ctx, Map d) {
-    final n = TextEditingController(text: d['name']);
-    final u = TextEditingController(text: d['username']);
-    final b = TextEditingController(text: d['bio'] ?? '');
-    final p = TextEditingController(text: d['pfp'] ?? '');
-    final dark = Theme.of(ctx).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: ctx, isScrollControlled: true, useSafeArea: true,
-      backgroundColor: dark ? Gx.d4 : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
-      builder: (c) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom + 24, left: 22, right: 22, top: 14),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _SheetHandle(),
-          const SizedBox(height: 16),
-          ShaderMask(shaderCallback: (r) => Gx.gBrand.createShader(r),
-            child: const Text('Edit Profile', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
-          const SizedBox(height: 20),
-          _GaxField(ctrl: n, hint: 'Name', icon: Icons.person_outline_rounded, dark: dark),
-          const SizedBox(height: 10),
-          _GaxField(ctrl: u, hint: 'Username', icon: Icons.alternate_email_rounded, dark: dark),
-          const SizedBox(height: 10),
-          _GaxField(ctrl: b, hint: 'Bio', icon: Icons.notes_rounded, maxLines: 2, dark: dark),
-          const SizedBox(height: 10),
-          _GaxField(ctrl: p, hint: 'Avatar URL', icon: Icons.image_outlined, dark: dark),
-          const SizedBox(height: 22),
-          _GaxBtn(onTap: () {
-            if (n.text.trim().isEmpty || u.text.trim().isEmpty) return;
-            FirebaseDatabase.instance.ref('users/${d['uid']}').update({
-              'name': n.text.trim(), 'username': u.text.trim().toLowerCase(),
-              'pfp': p.text.trim().isEmpty ? (d['pfp'] ?? '') : p.text.trim(),
-              'bio': b.text.trim(),
-            }).catchError((_){});
-            Navigator.pop(c);
-          }, child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15))),
-        ]),
-      ),
-    );
-  }
-
   void _showAbout(BuildContext ctx) => showDialog(context: ctx, builder: (c) => _GaxAlertDialog(
     title: 'About GAX', body: 'GAX Chats — real-time messaging.\nFast. Secure. Yours.\n\nv9.0  ·  Built by GamerArnabXYZ\nArnabLabZ Studio\n\n✨ Features: Emoji reactions, message forward, URL sharing, online friends, real-time presence, smart unread counts.',
     confirmLabel: 'Close', confirmClr: Gx.violet, onConfirm: () => Navigator.pop(c),
   ));
+}
+
+class _EditProfileSheet extends StatefulWidget {
+  final Map d;
+  const _EditProfileSheet({required this.d});
+  @override State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  late final TextEditingController n, u, b, p;
+  
+  @override
+  void initState() {
+    super.initState();
+    n = TextEditingController(text: widget.d['name']);
+    u = TextEditingController(text: widget.d['username']);
+    b = TextEditingController(text: widget.d['bio'] ?? '');
+    p = TextEditingController(text: widget.d['pfp'] ?? '');
+  }
+
+  @override
+  void dispose() { n.dispose(); u.dispose(); b.dispose(); p.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext c) {
+    final dark = Theme.of(c).brightness == Brightness.dark;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom + 24, left: 22, right: 22, top: 14),
+      child: Column(mainAxisSize: MainAxisSize.min, children:[
+        _SheetHandle(),
+        const SizedBox(height: 16),
+        ShaderMask(shaderCallback: (r) => Gx.gBrand.createShader(r),
+          child: const Text('Edit Profile', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
+        const SizedBox(height: 20),
+        _GaxField(ctrl: n, hint: 'Name', icon: Icons.person_outline_rounded, dark: dark),
+        const SizedBox(height: 10),
+        _GaxField(ctrl: u, hint: 'Username', icon: Icons.alternate_email_rounded, dark: dark),
+        const SizedBox(height: 10),
+        _GaxField(ctrl: b, hint: 'Bio', icon: Icons.notes_rounded, maxLines: 2, dark: dark),
+        const SizedBox(height: 10),
+        _GaxField(ctrl: p, hint: 'Avatar URL', icon: Icons.image_outlined, dark: dark),
+        const SizedBox(height: 22),
+        _GaxBtn(onTap: () {
+          if (n.text.trim().isEmpty || u.text.trim().isEmpty) return;
+          FirebaseDatabase.instance.ref('users/${widget.d['uid']}').update({
+            'name': n.text.trim(), 'username': u.text.trim().toLowerCase(),
+            'pfp': p.text.trim().isEmpty ? (widget.d['pfp'] ?? '') : p.text.trim(),
+            'bio': b.text.trim(),
+          }).catchError((_){});
+          Navigator.pop(c);
+        }, child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15))),
+      ]),
+    );
+  }
 }
 
 class _ProfileHeader extends StatelessWidget {
@@ -1401,11 +1390,11 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext ctx) => Container(
     decoration: BoxDecoration(gradient: dark ? Gx.gHdr : Gx.gLHdr),
-    child: SafeArea(bottom: false, child: Column(children: [
+    child: SafeArea(bottom: false, child: Column(children:[
       const SizedBox(height: 28),
       GestureDetector(
         onTap: onEdit,
-        child: Stack(alignment: Alignment.bottomRight, children: [
+        child: Stack(alignment: Alignment.bottomRight, children:[
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(shape: BoxShape.circle, gradient: Gx.gBrand, boxShadow: Gx.glow(Gx.violet, b: 26)),
@@ -1432,13 +1421,12 @@ class _ProfileHeader extends StatelessWidget {
             style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 13))),
       ],
       const SizedBox(height: 16),
-      // ── Stats pills ──────────────────────────────
       StreamBuilder(
         stream: FirebaseDatabase.instance.ref('users/${d['uid']}/friends').onValue,
         builder: (_, snap) {
           final count = (snap.hasData && snap.data!.snapshot.value != null)
               ? (snap.data!.snapshot.value as Map? ?? {}).length : 0;
-          return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          return Row(mainAxisAlignment: MainAxisAlignment.center, children:[
             _StatPill(label: 'Friends', value: '$count'),
             const SizedBox(width: 12),
             _StatPill(label: 'Status', value: d['status'] == 'online' ? '🟢 Online' : '⚫ Offline'),
@@ -1461,7 +1449,7 @@ class _StatPill extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: Colors.white.withOpacity(0.18)),
     ),
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
+    child: Column(mainAxisSize: MainAxisSize.min, children:[
       Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
       const SizedBox(height: 2),
       Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10.5, fontWeight: FontWeight.w500)),
@@ -1495,7 +1483,7 @@ class ProfileDialog extends StatelessWidget {
             boxShadow: Gx.glow2(Gx.violet),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Stack(alignment: Alignment.bottomRight, children: [
+            Stack(alignment: Alignment.bottomRight, children:[
               Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(shape: BoxShape.circle, gradient: Gx.gBrand, boxShadow: Gx.glow(Gx.violet, b: 22)),
@@ -1507,7 +1495,7 @@ class ProfileDialog extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: online ? Gx.live : Gx.away, shape: BoxShape.circle,
                   border: Border.all(color: dark ? Gx.d3 : Colors.white, width: 2.5),
-                  boxShadow: online ? Gx.glow(Gx.live, b: 8) : [],
+                  boxShadow: online ? Gx.glow(Gx.live, b: 8) :[],
                 ),
               ),
             ]),
@@ -1523,7 +1511,7 @@ class ProfileDialog extends StatelessWidget {
                 color: online ? Gx.live.withOpacity(0.12) : (dark ? Gx.d4 : Gx.l2),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
+              child: Row(mainAxisSize: MainAxisSize.min, children:[
                 Container(width: 7, height: 7, decoration: BoxDecoration(color: online ? Gx.live : Gx.tx2, shape: BoxShape.circle)),
                 const SizedBox(width: 5),
                 Text(online ? 'Online' : 'Offline',
@@ -1537,7 +1525,7 @@ class ProfileDialog extends StatelessWidget {
             const SizedBox(height: 22),
             _GaxBtn(
               onTap: () { Navigator.pop(ctx); _gaxPush(ctx, ChatRoom(target: user)); },
-              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children:[
                 Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Colors.white), SizedBox(width: 8),
                 Text('Send Message', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
               ]),
@@ -1576,9 +1564,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     super.initState();
     final ids = [myId, widget.target['uid']]..sort();
     chatId = ids.join('_');
-    // Clean up typing indicator if app is force-killed
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').onDisconnect().set(false).catchError((_){});
-    // Mark user online
     FirebaseDatabase.instance.ref('users/$myId/status').set('online').catchError((_){});
     FirebaseDatabase.instance.ref('users/$myId/status').onDisconnect().set('offline').catchError((_){});
     _markRead(); _loadPin(); _initChatMeta();
@@ -1597,9 +1583,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     _msgC.dispose(); _imgC.dispose(); _srcC.dispose(); _scroll.dispose();
     _typingTimer?.cancel(); _sendAc.dispose();
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((_){});
-    // Write lastSeen timestamp on leave
-    FirebaseDatabase.instance.ref('users/$myId/lastSeen')
-        .set(ServerValue.timestamp).catchError((_){});
+    FirebaseDatabase.instance.ref('users/$myId/lastSeen').set(ServerValue.timestamp).catchError((_){});
     super.dispose();
   }
 
@@ -1613,9 +1597,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
         if (msg['senderId'] != myId && msg['read'] != true)
           updates['messages/$chatId/$k/read'] = true;
       });
-      if (updates.isNotEmpty)
-        FirebaseDatabase.instance.ref().update(updates).catchError((_){});
-      // Reset unread counter
+      if (updates.isNotEmpty) FirebaseDatabase.instance.ref().update(updates).catchError((_){});
       FirebaseDatabase.instance.ref('chats/$chatId/unread/$myId').set(0).catchError((_){});
     });
   }
@@ -1687,9 +1669,8 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
 
   Future<void> _saveChatMeta(String type, String text) async {
     final raw     = type == 'image' ? '📷 Image' : type == 'link' ? '🔗 Link' : text.trim();
-    final preview  = raw.length > 80 ? '\${raw.substring(0, 80)}…' : raw;
-    final otherUid = widget.target['uid'].toString();
-    // Batch write: meta + members + unread increment
+    final preview = raw.length > 80 ? '${raw.substring(0, 80)}…' : raw;
+    final otherUid= widget.target['uid'].toString();
     await FirebaseDatabase.instance.ref().update({
       'chats/$chatId/members/$myId': true,
       'chats/$chatId/members/$otherUid': true,
@@ -1699,105 +1680,78 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
       'chats/$chatId/lastTs': ServerValue.timestamp,
       'chats/$chatId/updatedAt': ServerValue.timestamp,
     });
-    // Atomic unread increment for receiver (no race condition)
     FirebaseDatabase.instance.ref('chats/$chatId/unread/$otherUid')
         .set(ServerValue.increment(1)).catchError((_){});
   }
 
   void _initChatMeta() {
     FirebaseDatabase.instance.ref('chats/$chatId/members').update({
-      myId: true,
-      widget.target['uid'].toString(): true,
-    }).catchError((_) {}); // silent fail - non-critical
+      myId: true, widget.target['uid'].toString(): true,
+    }).catchError((_) {});
   }
 
-  // ── Forward message to a friend ─────────────────
   void _showForwardSheet(Map msg) {
     final fwdText = msg['type'] == 'image' ? msg['text'] : (msg['text'] ?? '');
     final fwdType = msg['type'] ?? 'text';
     showModalBottomSheet(
-      context: context,
-      backgroundColor: dark ? Gx.d4 : Colors.white,
-      isScrollControlled: true,
+      context: context, backgroundColor: dark ? Gx.d4 : Colors.white, isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (c) => SafeArea(child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _SheetHandle(),
-          const SizedBox(height: 10),
+        child: Column(mainAxisSize: MainAxisSize.min, children:[
+          _SheetHandle(), const SizedBox(height: 10),
           Text('Forward to…', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 280,
-            child: StreamBuilder(
-              stream: FirebaseDatabase.instance.ref('users/$myId/friends').onValue,
-              builder: (_, snap) {
-                if (!snap.hasData || snap.data!.snapshot.value == null)
-                  return Center(child: Text('No friends yet', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L)));
-                final ids = (snap.data!.snapshot.value as Map? ?? {}).keys.map((k) => k.toString()).toList();
-                return ListView.builder(
-                  itemCount: ids.length,
-                  itemBuilder: (_, i) => StreamBuilder(
-                    stream: FirebaseDatabase.instance.ref('users/${ids[i]}').onValue,
-                    builder: (_, uSnap) {
-                      if (!uSnap.hasData || uSnap.data!.snapshot.value == null) return const SizedBox();
-                      final u = Map<String,dynamic>.from(uSnap.data!.snapshot.value as Map? ?? {});
-                      final toChatId = ([myId, ids[i]]..sort()).join('_');
-                      return _TapScale(
-                        onTap: () async {
-                          HapticFeedback.mediumImpact();
-                          final payload = <String,dynamic>{
-                            'senderId': myId, 'text': fwdText,
-                            'timestamp': ServerValue.timestamp, 'read': false,
-                            'type': fwdType, 'forwarded': true,
-                          };
-                          await FirebaseDatabase.instance.ref('messages/$toChatId').push().set(payload);
-                          await FirebaseDatabase.instance.ref('chats/$toChatId/members').update({myId: true, ids[i]: true});
-                          await FirebaseDatabase.instance.ref('chats/$toChatId').update({
-                            'lastMsg': fwdType == 'image' ? '📷 Image' : (fwdText.length > 80 ? fwdText.substring(0,80) : fwdText),
-                            'lastMsgType': fwdType, 'lastMsgSender': myId,
-                            'lastTs': ServerValue.timestamp, 'updatedAt': ServerValue.timestamp,
-                          });
-                          if (mounted) Navigator.pop(c);
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text('Forwarded to ${u['name']}'),
-                            behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 2)));
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                          child: Row(children: [
-                            _Avi(pfp: u['pfp'] ?? '', online: u['status'] == 'online', radius: 22),
-                            const SizedBox(width: 12),
-                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(u['name'] ?? '', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontWeight: FontWeight.w700, fontSize: 14)),
-                              Text('@${u['username'] ?? ''}', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 12)),
-                            ])),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(gradient: Gx.gBrand, borderRadius: BorderRadius.circular(20)),
-                              child: const Text('Send', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-                            ),
-                          ]),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
+          SizedBox(height: 280, child: StreamBuilder(
+            stream: FirebaseDatabase.instance.ref('users/$myId/friends').onValue,
+            builder: (_, snap) {
+              if (!snap.hasData || snap.data!.snapshot.value == null) return Center(child: Text('No friends yet', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L)));
+              final ids = (snap.data!.snapshot.value as Map? ?? {}).keys.map((k) => k.toString()).toList();
+              return ListView.builder(itemCount: ids.length, itemBuilder: (_, i) => StreamBuilder(
+                stream: FirebaseDatabase.instance.ref('users/${ids[i]}').onValue,
+                builder: (_, uSnap) {
+                  if (!uSnap.hasData || uSnap.data!.snapshot.value == null) return const SizedBox();
+                  final u = Map<String,dynamic>.from(uSnap.data!.snapshot.value as Map? ?? {});
+                  final toChatId = ([myId, ids[i]]..sort()).join('_');
+                  return _TapScale(onTap: () async {
+                      HapticFeedback.mediumImpact();
+                      final payload = {
+                        'senderId': myId, 'text': fwdText, 'timestamp': ServerValue.timestamp, 'read': false,
+                        'type': fwdType, 'forwarded': true,
+                      };
+                      await FirebaseDatabase.instance.ref('messages/$toChatId').push().set(payload);
+                      await FirebaseDatabase.instance.ref('chats/$toChatId/members').update({myId: true, ids[i]: true});
+                      await FirebaseDatabase.instance.ref('chats/$toChatId').update({
+                        'lastMsg': fwdType == 'image' ? '📷 Image' : (fwdText.length > 80 ? '${fwdText.substring(0,80)}…' : fwdText),
+                        'lastMsgType': fwdType, 'lastMsgSender': myId, 'lastTs': ServerValue.timestamp, 'updatedAt': ServerValue.timestamp,
+                      });
+                      if (mounted) Navigator.pop(c);
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Forwarded to ${u['name']}'), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 2)));
+                    }, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                      child: Row(children:[
+                        _Avi(pfp: u['pfp'] ?? '', online: u['status'] == 'online', radius: 22), const SizedBox(width: 12),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(u['name'] ?? '', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontWeight: FontWeight.w700, fontSize: 14)),
+                          Text('@${u['username'] ?? ''}', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 12)),
+                        ])),
+                        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(gradient: Gx.gBrand, borderRadius: BorderRadius.circular(20)),
+                          child: const Text('Send', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
+                      ])));
+                },
+              ));
+            },
+          )),
         ]),
       )),
     );
   }
 
-  // ── Send URL as link type ─────────────────────
   Future<void> _sendLink(String url) async {
     if (!url.startsWith('http://') && !url.startsWith('https://')) return;
     HapticFeedback.lightImpact();
     final payload = <String,dynamic>{
-      'senderId': myId, 'text': url,
-      'timestamp': ServerValue.timestamp, 'read': false, 'type': 'link',
+      'senderId': myId, 'text': url, 'timestamp': ServerValue.timestamp, 'read': false, 'type': 'link',
     };
     await FirebaseDatabase.instance.ref('messages/$chatId').push().set(payload);
     await _saveChatMeta('link', '🔗 $url');
@@ -1806,7 +1760,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   }
 
   void _emojiSheet() {
-    const emojis = [
+    const emojis =[
       '😀','😂','🥰','😎','🤔','😭','🙏','🔥',
       '💯','❤️','💜','💙','✨','🎉','👏','👀',
       '😅','🤣','😍','🥺','😤','😴','🤗','😇',
@@ -1814,33 +1768,20 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
       '🍕','🎮','🚀','💎','🏆','🎯','⚡','🌟',
     ];
     showModalBottomSheet(
-      context: context,
-      backgroundColor: dark ? Gx.d4 : Colors.white,
+      context: context, backgroundColor: dark ? Gx.d4 : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (c) => SafeArea(child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child: Column(mainAxisSize: MainAxisSize.min, children:[
           _SheetHandle(), const SizedBox(height: 10),
           Text('Emoji', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 6, runSpacing: 6,
-            children: emojis.map((e) => _TapScale(
-              onTap: () {
-                Navigator.pop(c);
-                _msgC.text = _msgC.text + e;
+          Wrap(spacing: 6, runSpacing: 6, children: emojis.map((e) => _TapScale(onTap: () {
+                Navigator.pop(c); _msgC.text = _msgC.text + e;
                 _msgC.selection = TextSelection.collapsed(offset: _msgC.text.length);
-              },
-              child: Container(
-                width: 46, height: 46,
-                decoration: BoxDecoration(
-                  color: dark ? Gx.d5 : Gx.l2,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(child: Text(e, style: const TextStyle(fontSize: 22))),
-              ),
-            )).toList(),
-          ),
+              }, child: Container(width: 46, height: 46, decoration: BoxDecoration(color: dark ? Gx.d5 : Gx.l2, borderRadius: BorderRadius.circular(12)),
+                child: Center(child: Text(e, style: const TextStyle(fontSize: 22))))
+            )).toList()),
           const SizedBox(height: 8),
         ]),
       )),
@@ -1849,53 +1790,42 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
 
   void _chatMoreMenu() {
     showModalBottomSheet(
-      context: context,
-      backgroundColor: dark ? Gx.d4 : Colors.white,
+      context: context, backgroundColor: dark ? Gx.d4 : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (c) => SafeArea(child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child: Column(mainAxisSize: MainAxisSize.min, children:[
           _SheetHandle(), const SizedBox(height: 8),
-          _ActionRow(icon: Icons.person_outline_rounded, color: Gx.violet,
-            label: 'View Profile',
-            onTap: () {
-              Navigator.pop(c);
-              showDialog(context: context,
-                builder: (_) => ProfileDialog(user: widget.target));
-            }, dark: dark),
-          _ActionRow(icon: Icons.push_pin_outlined, color: Gx.indigo,
-            label: _pinMsg != null ? 'Unpin Message' : 'No Pinned Message',
+          _ActionRow(icon: Icons.person_outline_rounded, color: Gx.violet, label: 'View Profile',
+            onTap: () { Navigator.pop(c); showDialog(context: context, builder: (_) => ProfileDialog(user: widget.target)); }, dark: dark),
+          _ActionRow(icon: Icons.push_pin_outlined, color: Gx.indigo, label: _pinMsg != null ? 'Unpin Message' : 'No Pinned Message',
             onTap: _pinMsg != null ? () {
               FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){});
-              setState(() { _pinKey = null; _pinMsg = null; });
-              Navigator.pop(c);
+              setState(() { _pinKey = null; _pinMsg = null; }); Navigator.pop(c);
             } : null, dark: dark),
-          _ActionRow(icon: Icons.cleaning_services_outlined, color: Gx.amber,
-            label: 'Clear Chat',
+          _ActionRow(icon: Icons.cleaning_services_outlined, color: Gx.amber, label: 'Clear Chat',
             onTap: () {
               Navigator.pop(c);
-              _gaxDialog(context, title: 'Clear Chat',
-                body: 'Delete all messages? This cannot be undone.',
+              _gaxDialog(context, title: 'Clear Chat', body: 'Delete all messages? This cannot be undone.',
                 confirmLabel: 'Clear', confirmClr: Gx.rose,
                 onConfirm: () {
                   FirebaseDatabase.instance.ref('messages/$chatId').remove().catchError((_){});
-                  FirebaseDatabase.instance.ref('chats/$chatId/lastMsg').set('').catchError((_){});
+                  FirebaseDatabase.instance.ref('chats/$chatId').update({
+                     'lastMsg': '', 'lastMsgType': 'text', 'lastMsgSender': '',
+                  }).catchError((_){});
                   Navigator.pop(context);
                 });
             }, dark: dark),
-          _ActionRow(icon: Icons.block_rounded, color: Gx.rose,
-            label: 'Unfriend & Remove',
+          _ActionRow(icon: Icons.block_rounded, color: Gx.rose, label: 'Unfriend & Remove',
             onTap: () {
               Navigator.pop(c);
-              _gaxDialog(context, title: 'Unfriend',
-                body: 'Remove ${widget.target['name']} from friends?',
+              _gaxDialog(context, title: 'Unfriend', body: 'Remove ${widget.target['name']} from friends?',
                 confirmLabel: 'Remove', confirmClr: Gx.rose,
                 onConfirm: () {
                   final otherUid = widget.target['uid'].toString();
                   FirebaseDatabase.instance.ref('users/$myId/friends/$otherUid').remove().catchError((_){});
                   FirebaseDatabase.instance.ref('users/$otherUid/friends/$myId').remove().catchError((_){});
-                  Navigator.pop(context);
-                  Navigator.pop(context);
+                  Navigator.pop(context); Navigator.pop(context);
                 });
             }, dark: dark),
         ]),
@@ -1904,40 +1834,22 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   }
 
   void _linkSheet() {
-    final lctrl = TextEditingController();
     showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: dark ? Gx.d4 : Colors.white,
+      context: context, isScrollControlled: true, backgroundColor: dark ? Gx.d4 : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (c) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom + 20, left: 20, right: 20, top: 14),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _SheetHandle(), const SizedBox(height: 14),
-          Text('Share a Link', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 14),
-          _GaxField(ctrl: lctrl, hint: 'Paste URL here…', icon: Icons.link_rounded,
-            type: TextInputType.url, dark: dark),
-          const SizedBox(height: 16),
-          _GaxBtn(onTap: () async {
-            final url = lctrl.text.trim();
-            Navigator.pop(c);
-            lctrl.dispose();
-            await _sendLink(url);
-          }, child: const Text('Send Link', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15))),
-        ]),
-      ),
+      builder: (c) => _LinkSheetUI(onSend: (url) {
+        Navigator.pop(c); _sendLink(url);
+      }),
     );
   }
 
   void _imgSheet() {
     showModalBottomSheet(
-      context: context, isScrollControlled: true,
-      backgroundColor: dark ? Gx.d4 : Colors.white,
+      context: context, isScrollControlled: true, backgroundColor: dark ? Gx.d4 : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (c) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom + 20, left: 20, right: 20, top: 14),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child: Column(mainAxisSize: MainAxisSize.min, children:[
           _SheetHandle(), const SizedBox(height: 14),
           Text('Share Image', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 14),
@@ -1953,51 +1865,33 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     HapticFeedback.mediumImpact();
     FirebaseDatabase.instance.ref('messages/$chatId/$key/reactions/$myId').set('❤️').catchError((_){});
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('❤️ Reacted!'), behavior: SnackBarBehavior.floating, duration: Duration(milliseconds: 800)));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❤️ Reacted!'), behavior: SnackBarBehavior.floating, duration: Duration(milliseconds: 800)));
   }
 
   void _msgActions(String key, Map msg, bool isMe) {
     HapticFeedback.mediumImpact();
     final dark = Theme.of(context).brightness == Brightness.dark;
-    const emojis = ['❤️', '😂', '👍', '😮', '😢', '🔥'];
+    const emojis =['❤️', '😂', '👍', '😮', '😢', '🔥'];
     showModalBottomSheet(
-      context: context,
-      backgroundColor: dark ? Gx.d4 : Colors.white,
+      context: context, backgroundColor: dark ? Gx.d4 : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (c) => SafeArea(child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _SheetHandle(),
-          const SizedBox(height: 12),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: emojis.map((e) => _TapScale(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              FirebaseDatabase.instance.ref('messages/$chatId/$key/reactions/$myId').set(e).catchError((_){});
-              Navigator.pop(c);
-            },
-            child: Container(
-              width: 50, height: 50,
-              decoration: BoxDecoration(color: dark ? Gx.d5 : Gx.l2, borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Gx.violet.withOpacity(0.15))),
-              child: Center(child: Text(e, style: const TextStyle(fontSize: 24))),
-            ),
-          )).toList()),
-          const SizedBox(height: 8),
-          Divider(color: dark ? Gx.divD : Gx.divL),
+        child: Column(mainAxisSize: MainAxisSize.min, children:[
+          _SheetHandle(), const SizedBox(height: 12),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: emojis.map((e) => _TapScale(onTap: () {
+              HapticFeedback.lightImpact(); FirebaseDatabase.instance.ref('messages/$chatId/$key/reactions/$myId').set(e).catchError((_){}); Navigator.pop(c);
+            }, child: Container(width: 50, height: 50, decoration: BoxDecoration(color: dark ? Gx.d5 : Gx.l2, borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Gx.violet.withOpacity(0.15))), child: Center(child: Text(e, style: const TextStyle(fontSize: 24)))))
+          ).toList()),
+          const SizedBox(height: 8), Divider(color: dark ? Gx.divD : Gx.divL),
           _ActionRow(icon: Icons.reply_rounded, color: Gx.violet, label: 'Reply',
             onTap: () { setState(() => _replyMsg = msg); Navigator.pop(c); }, dark: dark),
           _ActionRow(icon: Icons.forward_rounded, color: Gx.mint, label: 'Forward',
-            onTap: () {
-              Navigator.pop(c);
-              _showForwardSheet(msg);
-            }, dark: dark),
+            onTap: () { Navigator.pop(c); _showForwardSheet(msg); }, dark: dark),
           _ActionRow(icon: Icons.copy_rounded, color: Gx.cyan, label: 'Copy Text',
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: msg['text'] ?? ''));
-              Navigator.pop(c);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Copied to clipboard'), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 1)));
+            onTap: () { Clipboard.setData(ClipboardData(text: msg['text'] ?? '')); Navigator.pop(c);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard'), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 1)));
             }, dark: dark),
           if (isMe) _ActionRow(icon: Icons.push_pin_outlined, color: Gx.indigo, label: 'Pin Message',
             onTap: () {
@@ -2005,14 +1899,34 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
               setState(() { _pinKey = key; _pinMsg = msg; }); Navigator.pop(c);
             }, dark: dark),
           if (isMe) _ActionRow(icon: Icons.delete_outline_rounded, color: Gx.rose, label: 'Delete',
-            onTap: () {
-              FirebaseDatabase.instance.ref('messages/$chatId/$key').remove().catchError((_){});
-              // Clear pin if this message was pinned
+            onTap: () async {
+              final ref = FirebaseDatabase.instance.ref;
+              await ref('messages/$chatId/$key').remove().catchError((_){});
               if (_pinKey == key) {
-                FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){});
+                ref('chats/$chatId/pinned').remove().catchError((_){});
                 setState(() { _pinKey = null; _pinMsg = null; });
               }
-              Navigator.pop(c);
+              if (mounted) Navigator.pop(c);
+              
+              // Smart check to auto-update Home Page preview 
+              final lastMsgCheck = await ref('messages/$chatId').orderByKey().limitToLast(1).get();
+              if (lastMsgCheck.exists && lastMsgCheck.value != null) {
+                  final valMap = lastMsgCheck.value as Map;
+                  final v = valMap.values.first as Map;
+                  final type = v['type'] ?? 'text';
+                  final textStr = v['text'] ?? '';
+                  final t = type == 'image' ? '📷 Image' : type == 'link' ? '🔗 Link' : textStr;
+                  final preview = t.length > 80 ? '${t.substring(0,80)}…' : t;
+                  await ref('chats/$chatId').update({
+                     'lastMsg': preview, 'lastMsgType': type,
+                     'lastMsgSender': v['senderId'], 'lastTs': v['timestamp'],
+                  });
+              } else {
+                  await ref('chats/$chatId').update({
+                     'lastMsg': 'No messages', 'lastMsgType': 'text',
+                     'lastMsgSender': '',
+                  });
+              }
             }, dark: dark),
         ]),
       )),
@@ -2030,7 +1944,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
         leadingWidth: 30, titleSpacing: 0,
         title: GestureDetector(
           onTap: () => showDialog(context: ctx, builder: (_) => ProfileDialog(user: widget.target)),
-          child: Row(children: [
+          child: Row(children:[
             _Avi(pfp: widget.target['pfp'] ?? '', online: widget.target['status'] == 'online', radius: 20),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2039,7 +1953,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                 stream: FirebaseDatabase.instance.ref('typing/$chatId/${widget.target['uid']}').onValue,
                 builder: (_, tSnap) {
                   if (tSnap.hasData && tSnap.data!.snapshot.value == true)
-                    return Row(children: [
+                    return Row(children:[
                       const Text('typing', style: TextStyle(color: Colors.white60, fontSize: 11, fontStyle: FontStyle.italic)),
                       const SizedBox(width: 4), _DotsLoader(small: true, color: Colors.white60),
                     ]);
@@ -2069,9 +1983,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                       return AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
                         child: Text(subtitle, key: ValueKey(subtitle),
-                          style: TextStyle(
-                            color: online ? Gx.live.withOpacity(0.9) : Colors.white54,
-                            fontSize: 11.5)),
+                          style: TextStyle(color: online ? Gx.live.withOpacity(0.9) : Colors.white54, fontSize: 11.5)),
                       );
                     },
                   );
@@ -2080,42 +1992,30 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
             ])),
           ]),
         ),
-        actions: [
+        actions:[
           if (_searching) SizedBox(width: 160, child: TextField(
-            controller: _srcC, autofocus: true,
-            onChanged: (v) => setState(() => _srchQ = v.toLowerCase()),
+            controller: _srcC, autofocus: true, onChanged: (v) => setState(() => _srchQ = v.toLowerCase()),
             style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: const InputDecoration(
-              hintText: 'Search…', hintStyle: TextStyle(color: Colors.white54),
+            decoration: const InputDecoration(hintText: 'Search…', hintStyle: TextStyle(color: Colors.white54),
               border: InputBorder.none, filled: false, contentPadding: EdgeInsets.symmetric(vertical: 8)),
           )),
           IconButton(
-            icon: AnimatedSwitcher(duration: const Duration(milliseconds: 200),
-              child: Icon(_searching ? Icons.close_rounded : Icons.search_rounded,
-                key: ValueKey(_searching), color: Colors.white, size: 21)),
+            icon: AnimatedSwitcher(duration: const Duration(milliseconds: 200), child: Icon(_searching ? Icons.close_rounded : Icons.search_rounded, key: ValueKey(_searching), color: Colors.white, size: 21)),
             onPressed: () => setState(() { _searching = !_searching; _srchQ = ''; _srcC.clear(); }),
           ),
-          IconButton(
-            icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 21),
-            onPressed: () => _chatMoreMenu(),
-          ),
+          IconButton(icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 21), onPressed: () => _chatMoreMenu()),
         ],
       ),
-      body: Column(children: [
-        if (_pinMsg != null) _PinBanner(
-          text: _pinMsg!['type'] == 'image' ? '📷 Image' : (_pinMsg!['text'] ?? ''),
-          onDismiss: () { FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){}); setState(() { _pinKey = null; _pinMsg = null; }); },
-          dark: dark,
-        ),
+      body: Column(children:[
+        if (_pinMsg != null) _PinBanner(text: _pinMsg!['type'] == 'image' ? '📷 Image' : (_pinMsg!['text'] ?? ''),
+          onDismiss: () { FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){}); setState(() { _pinKey = null; _pinMsg = null; }); }, dark: dark),
         Expanded(child: StreamBuilder(
           stream: FirebaseDatabase.instance.ref('messages/$chatId').onValue,
           builder: (ctx, snap) {
             if (!snap.hasData || snap.data!.snapshot.value == null)
-              return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              return Center(child: Column(mainAxisSize: MainAxisSize.min, children:[
                 TweenAnimationBuilder<double>(tween: Tween(begin: 0.0, end: 1.0),
-                  duration: const Duration(milliseconds: 600), curve: Curves.elasticOut,
-                  builder: (_, v, child) => Transform.scale(scale: v, child: child),
-                  child: const Text('⚡', style: TextStyle(fontSize: 52))),
+                  duration: const Duration(milliseconds: 600), curve: Curves.elasticOut, builder: (_, v, child) => Transform.scale(scale: v, child: child), child: const Text('⚡', style: TextStyle(fontSize: 52))),
                 const SizedBox(height: 12),
                 Text('Start chatting with ${widget.target['name']}', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 14)),
               ]));
@@ -2125,10 +2025,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
             }).toList();
             msgs.sort((a, b) => ((a['timestamp'] ?? 0) as num).compareTo((b['timestamp'] ?? 0) as num));
             if (_srchQ.isNotEmpty) msgs = msgs.where((m) => (m['text'] ?? '').toString().toLowerCase().contains(_srchQ)).toList();
-            if (msgs.length != _lastMsgCount) {
-              _lastMsgCount = msgs.length;
-              _toBottom();
-            }
+            if (msgs.length != _lastMsgCount) { _lastMsgCount = msgs.length; _toBottom(); }
             return ListView.builder(
               controller: _scroll,
               physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -2139,13 +2036,10 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                 final ts = m['timestamp'] is int ? DateTime.fromMillisecondsSinceEpoch(m['timestamp'] as int) : DateTime.now();
                 final prevTs = i > 0 && msgs[i-1]['timestamp'] is int
                     ? DateTime.fromMillisecondsSinceEpoch(msgs[i-1]['timestamp'] as int) : null;
-                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children:[
                   if (prevTs == null || !_sameDay(prevTs, ts)) _DateChip(ts, dark),
-                  _BubbleEntry(isMe: isMe, child: _BubbleWidget(
-                    msg: m, isMe: isMe, ts: ts, myId: myId, dark: dark,
-                    onLongPress: () => _msgActions(m['_key'] as String, m, isMe),
-                    onDoubleTap: () => _quickReact(m['_key'] as String),
-                  )),
+                  _BubbleEntry(isMe: isMe, child: _BubbleWidget(msg: m, isMe: isMe, ts: ts, myId: myId, dark: dark,
+                    onLongPress: () => _msgActions(m['_key'] as String, m, isMe), onDoubleTap: () => _quickReact(m['_key'] as String))),
                 ]);
               },
             );
@@ -2159,6 +2053,36 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
 
   bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 }
+
+// MEMORY-SAFE LINK SHEET UI COMPONENT
+class _LinkSheetUI extends StatefulWidget {
+  final ValueChanged<String> onSend;
+  const _LinkSheetUI({required this.onSend});
+  @override State<_LinkSheetUI> createState() => _LinkSheetUIState();
+}
+class _LinkSheetUIState extends State<_LinkSheetUI> {
+  final lctrl = TextEditingController();
+  @override void dispose() { lctrl.dispose(); super.dispose(); }
+
+  @override Widget build(BuildContext c) {
+    final dark = Theme.of(c).brightness == Brightness.dark;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom + 20, left: 20, right: 20, top: 14),
+      child: Column(mainAxisSize: MainAxisSize.min, children:[
+        _SheetHandle(), const SizedBox(height: 14),
+        Text('Share a Link', style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 16, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 14),
+        _GaxField(ctrl: lctrl, hint: 'Paste URL here…', icon: Icons.link_rounded, type: TextInputType.url, dark: dark),
+        const SizedBox(height: 16),
+        _GaxBtn(onTap: () {
+          final url = lctrl.text.trim();
+          widget.onSend(url);
+        }, child: const Text('Send Link', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15))),
+      ]),
+    );
+  }
+}
+
 
 // BUBBLE ENTRY
 class _BubbleEntry extends StatefulWidget {
@@ -2193,7 +2117,7 @@ class _BubbleWidget extends StatelessWidget {
         onLongPress: onLongPress, onDoubleTap: onDoubleTap,
         child: RepaintBoundary(child: Container(
           margin: EdgeInsets.only(bottom: 3, top: 3, left: isMe ? 64 : 0, right: isMe ? 0 : 64),
-          child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start, children:[
             Container(
               decoration: BoxDecoration(
                 color: bg,
@@ -2229,7 +2153,7 @@ class _BubbleBody extends StatelessWidget {
       if (msg['forwarded'] == true)
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
+          child: Row(mainAxisSize: MainAxisSize.min, children:[
             Icon(Icons.forward_rounded, size: 12, color: isMe ? Colors.white54 : Gx.tx2),
             const SizedBox(width: 3),
             Text('Forwarded', style: TextStyle(fontSize: 10.5, color: isMe ? Colors.white54 : Gx.tx2, fontStyle: FontStyle.italic)),
@@ -2244,7 +2168,7 @@ class _BubbleBody extends StatelessWidget {
         Padding(padding: const EdgeInsets.fromLTRB(13, 10, 13, 4),
           child: _AutoContent(text: msg['text'] ?? '', tx: tx, isMe: isMe, dark: dark)),
       Padding(padding: const EdgeInsets.fromLTRB(12, 0, 10, 7),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
+        child: Row(mainAxisSize: MainAxisSize.min, children:[
           Text(DateFormat('hh:mm a').format(DateTime.fromMillisecondsSinceEpoch(msg['timestamp'] is int ? msg['timestamp'] as int : 0)),
             style: TextStyle(fontSize: 10.5, color: tsTx)),
           if (isMe) ...[
@@ -2340,7 +2264,7 @@ class _PinBanner extends StatelessWidget {
         left: const BorderSide(color: Gx.violet, width: 3),
       ),
     ),
-    child: Row(children: [
+    child: Row(children:[
       ShaderMask(shaderCallback: (r) => Gx.gBrand.createShader(r),
         child: const Icon(Icons.push_pin_rounded, size: 13, color: Colors.white)),
       const SizedBox(width: 8),
@@ -2360,7 +2284,7 @@ class _ReplyBar extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(16, 9, 8, 9),
     decoration: BoxDecoration(color: dark ? Gx.d3 : Gx.l2,
       border: Border(top: BorderSide(color: dark ? Gx.divD : Gx.divL, width: 0.6))),
-    child: Row(children: [
+    child: Row(children:[
       Container(width: 3, height: 36, margin: const EdgeInsets.only(right: 10),
         decoration: BoxDecoration(gradient: Gx.gBrand, borderRadius: BorderRadius.circular(2))),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2397,7 +2321,7 @@ class _MsgInput extends StatelessWidget {
       color: dark ? Gx.d2 : Colors.white,
       border: Border(top: BorderSide(color: dark ? Gx.divD : Gx.divL, width: 0.6)),
     ),
-    child: SafeArea(top: false, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+    child: SafeArea(top: false, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children:[
       _TapScale(
         onTap: onImage,
         child: Container(
@@ -2438,7 +2362,7 @@ class _MsgInput extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: Gx.violet.withOpacity(dark ? 0.20 : 0.15)),
         ),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children:[
           const SizedBox(width: 14),
           Expanded(child: TextField(
             controller: ctrl, onChanged: onTyping, maxLines: 5, minLines: 1,
@@ -2469,7 +2393,7 @@ class _MsgInput extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: hasText ? Gx.gBrand : null,
               color: hasText ? null : (dark ? Gx.d4 : Gx.l2),
-              boxShadow: hasText ? Gx.glow(Gx.violet, b: 16) : [],
+              boxShadow: hasText ? Gx.glow(Gx.violet, b: 16) :[],
             ),
             child: Icon(hasText ? Icons.send_rounded : Icons.mic_rounded,
               size: 20, color: hasText ? Colors.white : (dark ? Gx.tx2 : Gx.tx2L)),
@@ -2591,7 +2515,7 @@ class _Avi extends StatelessWidget {
     final hasPfp   = pfp.isNotEmpty && (pfp.startsWith('http://') || pfp.startsWith('https://'));
     final imgProv  = hasPfp ? NetworkImage(pfp) as ImageProvider : null;
     final fallback = Icon(Icons.person_rounded, size: radius * 0.9, color: Gx.tx2);
-    return Stack(clipBehavior: Clip.none, children: [
+    return Stack(clipBehavior: Clip.none, children:[
       if (online) Container(
         width: radius * 2 + 4, height: radius * 2 + 4,
         decoration: BoxDecoration(shape: BoxShape.circle, gradient: Gx.gBrand, boxShadow: Gx.glow(Gx.violet, b: 10, s: -2)),
@@ -2617,7 +2541,6 @@ class _GaxLogo extends StatelessWidget {
   const _GaxLogo({required this.size});
   @override
   Widget build(BuildContext ctx) {
-    // Uses logo.png from assets/logo.png if present, fallback to gradient icon
     return SizedBox(
       width: size, height: size,
       child: ClipRRect(
@@ -2704,7 +2627,7 @@ class _GaxBtn extends StatelessWidget {
           gradient: onTap != null ? Gx.gBrand : null,
           color: onTap == null ? Gx.d4 : null,
           borderRadius: BorderRadius.circular(15),
-          boxShadow: onTap != null ? Gx.glow(Gx.violet, b: 18) : [],
+          boxShadow: onTap != null ? Gx.glow(Gx.violet, b: 18) :[],
         ),
         child: Center(child: child),
       ),
@@ -2721,7 +2644,7 @@ class _GaxChip extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(gradient: Gx.gBrand, borderRadius: BorderRadius.circular(20), boxShadow: Gx.glow(Gx.violet, b: 12)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
+      child: Row(mainAxisSize: MainAxisSize.min, children:[
         Icon(icon, size: 14, color: Colors.white), const SizedBox(width: 5),
         Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
       ]),
@@ -2753,7 +2676,7 @@ class _ContactRow extends StatelessWidget {
       onTap: onTap,
       splashColor: Gx.violet.withOpacity(0.07),
       highlightColor: Gx.violet.withOpacity(0.04),
-      child: Column(children: [
+      child: Column(children:[
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           child: Row(children: [
             _Avi(pfp: u['pfp'] ?? '', online: u['status'] == 'online', radius: 24),
@@ -2808,7 +2731,7 @@ class _RadioDot extends StatelessWidget {
         color: selected ? Colors.transparent : Gx.tx2,
         width: 2,
       ),
-      boxShadow: selected ? Gx.glow(Gx.violet, b: 8, s: -2) : [],
+      boxShadow: selected ? Gx.glow(Gx.violet, b: 8, s: -2) :[],
     ),
     child: selected ? const Icon(Icons.check_rounded, size: 13, color: Colors.white) : null,
   );
@@ -2872,7 +2795,7 @@ class _FindEmptyView extends StatelessWidget {
         final username = d['username'] ?? '';
         return Center(child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
+          child: Column(mainAxisSize: MainAxisSize.min, children:[
             Container(
               width: 72, height: 72,
               decoration: BoxDecoration(gradient: Gx.gBrand2, borderRadius: BorderRadius.circular(22),
@@ -2903,7 +2826,7 @@ class _FindEmptyView extends StatelessWidget {
                     gradient: Gx.gBrand,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: Gx.glow(Gx.violet, b: 14)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  child: Row(mainAxisSize: MainAxisSize.min, children:[
                     const Icon(Icons.alternate_email_rounded, color: Colors.white, size: 18),
                     const SizedBox(width: 8),
                     Text('@$username', style: const TextStyle(color: Colors.white, fontSize: 15,
@@ -2933,7 +2856,7 @@ class _OnlineFriendsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext ctx) {
     if (friendIds.isEmpty) return const SizedBox();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
       _SectionLabel('ONLINE NOW'),
       SizedBox(
         height: 90,
@@ -2972,7 +2895,6 @@ class _OnlineFriendsStrip extends StatelessWidget {
   }
 }
 
-// ── URL Link Embed in chat bubble ──────────────────
 // ═══════════════════════════════════════════════════
 //  AUTO CONTENT — smart URL + image detector
 // ═══════════════════════════════════════════════════
@@ -2982,17 +2904,15 @@ class _AutoContent extends StatelessWidget {
   final bool isMe, dark;
   const _AutoContent({required this.text, required this.tx, required this.isMe, required this.dark});
 
-  // Image extensions — auto-embed
   static const _imgExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
 
-  // URL regex — detects http://, https://, www.
   static final _urlRegex = RegExp(
     r'(https?://[^\s]+|www\.[^\s]+)',
     caseSensitive: false,
   );
 
   bool _isImageUrl(String url) {
-    final lower = url.toLowerCase().split('?').first; // ignore query params
+    final lower = url.toLowerCase().split('?').first; 
     return _imgExts.any((ext) => lower.endsWith(ext));
   }
 
@@ -3001,16 +2921,13 @@ class _AutoContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext ctx) {
-    // If no URL found → plain text
     if (!_urlRegex.hasMatch(text)) {
       return Text(text, style: TextStyle(color: tx, fontSize: 15.5, height: 1.45));
     }
 
-    // Split text into segments
     final segments = <_Segment>[];
     int lastEnd = 0;
     for (final match in _urlRegex.allMatches(text)) {
-      // Text before URL
       if (match.start > lastEnd) {
         segments.add(_Segment(text.substring(lastEnd, match.start), _SegType.text));
       }
@@ -3022,12 +2939,10 @@ class _AutoContent extends StatelessWidget {
       }
       lastEnd = match.end;
     }
-    // Remaining text after last URL
     if (lastEnd < text.length) {
       segments.add(_Segment(text.substring(lastEnd), _SegType.text));
     }
 
-    // If only ONE segment and it's a pure image — render full-width
     if (segments.length == 1 && segments.first.type == _SegType.image) {
       return _AutoImageEmbed(url: segments.first.content, isMe: isMe, dark: dark);
     }
@@ -3035,7 +2950,6 @@ class _AutoContent extends StatelessWidget {
       return _LinkEmbed(url: segments.first.content, isMe: isMe, dark: dark);
     }
 
-    // Mixed content — build column
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -3072,7 +2986,6 @@ class _Segment {
   const _Segment(this.content, this.type);
 }
 
-// Auto-detected image embed (no button needed)
 class _AutoImageEmbed extends StatelessWidget {
   final String url;
   final bool isMe, dark;
@@ -3086,7 +2999,7 @@ class _AutoImageEmbed extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Stack(
           alignment: Alignment.bottomLeft,
-          children: [
+          children:[
             Image.network(
             url,
             width: 220, height: 180,
@@ -3098,7 +3011,7 @@ class _AutoImageEmbed extends StatelessWidget {
                       color: isMe ? Colors.white.withOpacity(0.08) : (dark ? Gx.d4 : Gx.l2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    child: Center(child: Column(mainAxisSize: MainAxisSize.min, children:[
                       _GaxSpinner(),
                       const SizedBox(height: 6),
                       Text('Loading image…', style: TextStyle(
@@ -3111,7 +3024,7 @@ class _AutoImageEmbed extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center, children: [
+                mainAxisAlignment: MainAxisAlignment.center, children:[
                 const Icon(Icons.broken_image_outlined, color: Gx.tx2, size: 26),
                 const SizedBox(height: 4),
                 Text('Could not load image', style: TextStyle(
@@ -3119,7 +3032,6 @@ class _AutoImageEmbed extends StatelessWidget {
               ]),
             ),
           ),
-          // Small "auto detected" label
           Container(
             margin: const EdgeInsets.all(5),
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -3127,7 +3039,7 @@ class _AutoImageEmbed extends StatelessWidget {
               color: Colors.black.withOpacity(0.45),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            child: const Row(mainAxisSize: MainAxisSize.min, children:[
               Icon(Icons.auto_awesome_rounded, size: 10, color: Colors.white70),
               SizedBox(width: 3),
               Text('Auto', style: TextStyle(color: Colors.white70, fontSize: 9.5,
@@ -3158,7 +3070,6 @@ class _LinkEmbed extends StatelessWidget {
     final bubbleBg = isMe
         ? Colors.white.withOpacity(0.12)
         : (dark ? Gx.d3 : Gx.l2);
-    final tx = isMe ? Colors.white : (dark ? Gx.tx1 : Gx.tx1L);
     final tx2 = isMe ? Colors.white70 : (dark ? Gx.tx2 : Gx.tx2L);
 
     return GestureDetector(
@@ -3171,28 +3082,26 @@ class _LinkEmbed extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Gx.violet.withOpacity(0.3)),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Header bar
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Gx.violet.withOpacity(0.25), Gx.cyan.withOpacity(0.10)],
+                colors:[Gx.violet.withOpacity(0.25), Gx.cyan.withOpacity(0.10)],
               ),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
-            child: Row(children: [
-              Icon(Icons.link_rounded, size: 14, color: Gx.violet),
+            child: Row(children:[
+              const Icon(Icons.link_rounded, size: 14, color: Gx.violet),
               const SizedBox(width: 6),
               Expanded(child: Text(_domain,
-                style: TextStyle(fontSize: 11, color: Gx.violet, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 11, color: Gx.violet, fontWeight: FontWeight.w700),
                 maxLines: 1, overflow: TextOverflow.ellipsis)),
             ]),
           ),
-          // URL text
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 7, 10, 8),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
               Text(url,
                 style: TextStyle(fontSize: 12, color: tx2, decoration: TextDecoration.underline,
                   decorationColor: tx2),
@@ -3204,10 +3113,10 @@ class _LinkEmbed extends StatelessWidget {
                   gradient: Gx.gBrand,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.open_in_new_rounded, size: 11, color: Colors.white),
-                  const SizedBox(width: 4),
-                  Text('Tap to copy link', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                child: const Row(mainAxisSize: MainAxisSize.min, children:[
+                  Icon(Icons.open_in_new_rounded, size: 11, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text('Tap to copy link', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
                 ]),
               ),
             ]),
@@ -3233,7 +3142,7 @@ class _SheetHandle extends StatelessWidget {
 
 Widget _emptyView(IconData icon, String title, String sub) => Center(
   child: Padding(padding: const EdgeInsets.all(36),
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
+    child: Column(mainAxisSize: MainAxisSize.min, children:[
       TweenAnimationBuilder<double>(tween: Tween(begin: 0.0, end: 1.0),
         duration: const Duration(milliseconds: 500), curve: Curves.easeOutBack,
         builder: (_, v, child) => Transform.scale(scale: v, child: child),
@@ -3245,14 +3154,14 @@ Widget _emptyView(IconData icon, String title, String sub) => Center(
               borderRadius: BorderRadius.circular(24),
               color: dark ? Gx.d4 : const Color(0xFFE8E6FF),
               border: Border.all(color: Gx.violet.withOpacity(dark ? 0.22 : 0.35), width: 1.2),
-              boxShadow: dark ? [] : [BoxShadow(color: Gx.violet.withOpacity(0.10), blurRadius: 16, offset: const Offset(0, 4))],
+              boxShadow: dark ? [] :[BoxShadow(color: Gx.violet.withOpacity(0.10), blurRadius: 16, offset: const Offset(0, 4))],
             ),
             child: Icon(icon, size: 38, color: dark ? Gx.tx2 : Gx.indigo));
         })),
       const SizedBox(height: 20),
       Builder(builder: (ctx) {
         final dark = Theme.of(ctx).brightness == Brightness.dark;
-        return Column(children: [
+        return Column(children:[
           Text(title, style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 17, fontWeight: FontWeight.w800)),
           const SizedBox(height: 7),
           Text(sub, textAlign: TextAlign.center, style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 13.5, height: 1.4)),
@@ -3305,7 +3214,7 @@ class _GaxAlertDialog extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: Text(title, style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontWeight: FontWeight.w800, fontSize: 17)),
         content: Text(body, style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontSize: 14)),
-        actions: [
+        actions:[
           if (onCancel != null) TextButton(onPressed: onCancel,
             child: Text('Cancel', style: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L))),
           TextButton(onPressed: onConfirm,
