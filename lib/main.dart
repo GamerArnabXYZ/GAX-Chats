@@ -953,7 +953,15 @@ class _ConvRow extends StatelessWidget {
                               final typing = tSnap.hasData && tSnap.data!.snapshot.value == true;
                               return AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 200),
-                                alignment: Alignment.centerLeft,
+                                layoutBuilder: (currentChild, previousChildren) {
+                                  return Stack(
+                                    alignment: Alignment.centerLeft, // ✔️ GAP PERFECTLY FIX KAREGA
+                                    children:[
+                                      ...previousChildren,
+                                      if (currentChild != null) currentChild,
+                                    ],
+                                  );
+                                },
                                 child: typing
                                   ? Row(key: const ValueKey('t'), mainAxisSize: MainAxisSize.min, children:[
                                       _DotsLoader(small: true), const SizedBox(width: 6),
