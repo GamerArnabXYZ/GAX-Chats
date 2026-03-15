@@ -953,6 +953,7 @@ class _ConvRow extends StatelessWidget {
                               final typing = tSnap.hasData && tSnap.data!.snapshot.value == true;
                               return AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 200),
+                                alignment: Alignment.centerLeft,
                                 child: typing
                                   ? Row(key: const ValueKey('t'), mainAxisSize: MainAxisSize.min, children:[
                                       _DotsLoader(small: true), const SizedBox(width: 6),
@@ -2847,15 +2848,65 @@ class _FindEmptyView extends StatelessWidget {
 }
 
 // ── Online Friends Horizontal Strip ────────────────
-class _OnlineFriendsStrip extends StatelessWidget {
+class _OnlineFriendsStrip extends StatefulWidget {
   final List<String> friendIds;
   final String myId;
   final bool dark;
   const _OnlineFriendsStrip({required this.friendIds, required this.myId, required this.dark});
 
   @override
+  State<_OnlineFriendsStrip> createState() => _OnlineFriendsStripState();
+}
+
+class _OnlineFriendsStripState extends State<_OnlineFriendsStrip> {
+  final Map<String, bool> _onlineStatus = {};
+  final List<StreamSubscription> _subs =[];
+
+  @override
+  void initState() {
+    super.initState();
+    _listenStatus();
+  }
+
+  @override
+  void didUpdateWidget(_OnlineFriendsStrip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.friendIds.length != widget.friendIds.length) {
+      _listenStatus();
+    }
+  }
+
+  void _listenStatus() {
+    for (var s in _subs) { s.cancel(); }
+    _subs.clear();
+    
+    // Sirf online/offline variable sun'ne k liye halke streams
+    for (String fid in widget.friendIds) {
+      final s = FirebaseDatabase.instance.ref('users/$fid/status').onValue.listen((e) {
+        if (!mounted) return;
+        final status = e.snapshot.value?.toString();
+        setState(() {
+          _onlineStatus[fid] = (status == 'online');
+        });
+      });
+      _subs.add(s);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var s in _subs) { s.cancel(); }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext ctx) {
-    if (friendIds.isEmpty) return const SizedBox();
+    // Only fetch ids jo asal me true (online) h
+    final onlineIds = _onlineStatus.entries.where((e) => e.value).map((e) => e.key).toList();
+
+    // <==== GAP KA MAIN FIX YAHIN HAI: 0 user pr kuch space nhi bnegi ===>
+    if (onlineIds.isEmpty) return const SizedBox.shrink();
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
       _SectionLabel('ONLINE NOW'),
       SizedBox(
@@ -2863,14 +2914,13 @@ class _OnlineFriendsStrip extends StatelessWidget {
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-          itemCount: friendIds.length,
+          itemCount: onlineIds.length,
           itemBuilder: (_, i) => StreamBuilder(
-            stream: FirebaseDatabase.instance.ref('users/${friendIds[i]}').onValue,
+            stream: FirebaseDatabase.instance.ref('users/${onlineIds[i]}').onValue,
             builder: (_, snap) {
               if (!snap.hasData || snap.data!.snapshot.value == null) return const SizedBox();
               final u = Map<String,dynamic>.from(snap.data!.snapshot.value as Map? ?? {});
-              final online = u['status'] == 'online';
-              if (!online) return const SizedBox();
+              
               return _TapScale(
                 onTap: () => _gaxPush(ctx, ChatRoom(target: u)),
                 child: Padding(
@@ -2882,7 +2932,7 @@ class _OnlineFriendsStrip extends StatelessWidget {
                       u['name'] ?? '',
                       maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                        color: dark ? Gx.tx1 : Gx.tx1L),
+                        color: widget.dark ? Gx.tx1 : Gx.tx1L),
                     )),
                   ]),
                 ),
