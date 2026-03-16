@@ -1646,10 +1646,12 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     });
   });
 
-  void _onTyping(String v) {
+    void _onTyping(String v) {
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(true).catchError((e)=>debugPrint("Typing Set Error: $e"));
     _typingTimer?.cancel();
-    _typingTimer = Timer(const Duration(seconds: 2), () => FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((e)=>debugPrint("Typing Off Error: $e"));
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((e)=>debugPrint("Typing Off Error: $e"));
+    });
   }
 
   void _toBottom() {
@@ -2524,7 +2526,7 @@ class _DotsLoaderState extends State<_DotsLoader> with TickerProviderStateMixin 
     final clr = widget.color ?? Gx.violet;
     return Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => Padding(
       padding: EdgeInsets.symmetric(horizontal: sz * 0.5),
-      child: AnimatedBuilder(animation: _acs[i], builder: (_, __) => Transform.translate(
+            child: AnimatedBuilder(animation: _acs[i], builder: (_, __) => Transform.translate(
         offset: Offset(0, -3.5 * _acs[i].value),
         child: Container(width: sz, height: sz, decoration: BoxDecoration(color: clr, shape: BoxShape.circle)),
       )),
@@ -2556,7 +2558,8 @@ class _Avi extends StatelessWidget {
         width: radius * 0.48, height: radius * 0.48,
         decoration: BoxDecoration(color: online ? Gx.live : Gx.away, shape: BoxShape.circle,
           border: Border.all(color: bg, width: 1.5),
-          boxShadow: online ? Gx.glow(Gx.live, b: 6, s: -2) : []),
+          boxShadow: online ? Gx.glow(Gx.live, b: 6, s: -2) :[],
+        ),
       )),
     ]);
   }
@@ -3245,10 +3248,12 @@ Widget _emptyView(IconData icon, String title, String sub) => Center(
 
 String _timeStr(DateTime dt) {
   final n = DateTime.now();
-  if (n.difference(dt).inHours < 24 && n.day == dt.day) return DateFormat('hh:mm a').format(dt);
-  if (n.difference(dt).inDays <= 1) return 'Yesterday';
+  if (_sd(dt, n)) return 'Today';
+  if (_sd(dt, n.subtract(const Duration(days: 1)))) return 'Yesterday';
   return DateFormat('dd/MM/yy').format(dt);
 }
+
+bool _sd(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
 void _gaxPush(BuildContext ctx, Widget page) => Navigator.push(ctx, PageRouteBuilder(
   pageBuilder: (_, a1, a2) => page,
