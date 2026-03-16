@@ -12,11 +12,13 @@ import 'dart:math' as math;
 //  URL LAUNCHER HELPER
 // ═══════════════════════════════════════════════════
 Future<void> _openUrl(String raw) async {
-  final url = raw.startsWith('http') ? raw : 'https://$raw';
+  final url = raw.trim().startsWith('http') ? raw.trim() : 'https://${raw.trim()}';
   final uri = Uri.tryParse(url);
-  if (uri == null) return;
+  if (uri == null || !uri.hasAbsolutePath) return;
   if (await canLaunchUrl(uri)) {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } else {
+    debugPrint('Could not launch $uri');
   }
 }
 
@@ -33,7 +35,7 @@ class Gx {
   static const d5 = Color(0xFF1F2142);
   static const d6 = Color(0xFF262950);
 
-  // Light palette  — warm ivory, not sterile white
+  // Light palette
   static const l0 = Color(0xFFF7F7FF);
   static const l1 = Color(0xFFFFFFFF);
   static const l2 = Color(0xFFEEEEFB);
@@ -244,6 +246,8 @@ class ThemeCtrl extends ChangeNotifier {
 // ═══════════════════════════════════════════════════
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // NOTE: For production, prefer using FirebaseOptions from google-services.json/plist
+  // These hardcoded keys are for web/desktop convenience only.
   await Firebase.initializeApp(
     options: const FirebaseOptions(
       apiKey: "AIzaSyCDxsFZBoEG-WJkN-2wuD_U5DCotgEXZkc",
@@ -303,9 +307,12 @@ class _AuthGate extends StatelessWidget {
       if (snap.connectionState == ConnectionState.waiting) return const _Splash();
       if (!snap.hasData) return const LoginScreen();
       final uid = snap.data!.uid;
-      FirebaseDatabase.instance.ref('users/$uid/status').set('online').catchError((_){});
-      FirebaseDatabase.instance.ref('users/$uid/status').onDisconnect().set('offline').catchError((_){});
-      FirebaseDatabase.instance.ref('users/$uid/lastSeen').onDisconnect().set(ServerValue.timestamp).catchError((_){});
+      
+      // Update presence - Using new merged logic
+      FirebaseDatabase.instance.ref('users/$uid/status').set('online').catchError((e)=>debugPrint("Presence Error: $e"));
+      FirebaseDatabase.instance.ref('users/$uid/status').onDisconnect().set('offline').catchError((e)=>debugPrint("Disconnect Error: $e"));
+      FirebaseDatabase.instance.ref('users/$uid/lastSeen').onDisconnect().set(ServerValue.timestamp).catchError((e)=>debugPrint("LastSeen Error: $e"));
+
       return StreamBuilder(
         stream: FirebaseDatabase.instance.ref('users/$uid').onValue,
         builder: (c, db) {
@@ -508,12 +515,19 @@ class _PSState extends State<ProfileSetup> {
     setState(() { _busy = true; _err = null; });
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final name = _n.text.trim();
-    await FirebaseDatabase.instance.ref('users/$uid').update({
-      'uid': uid, 'name': name, 'username': _u.text.trim().toLowerCase(),
+    
+    await FirebaseDatabase.instance.ref('users/$uid').set({
+      'uid': uid, 
+      'name': name, 
+      'username': _u.text.trim().toLowerCase(),
       'bio': _b.text.trim(),
       'pfp': 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=0C0D1E&color=7C5CFC&bold=true&size=200',
-      'status': 'online', 'createdAt': ServerValue.timestamp,
+      'status': 'online', 
+      'createdAt': ServerValue.timestamp,
+    }).catchError((e){
+      debugPrint("Profile Save Error: $e");
     });
+    
     if (mounted) setState(() => _busy = false);
   }
 
@@ -810,7 +824,6 @@ class _SortedChatListState extends State<_SortedChatList> {
   void _subscribeSingle(String fid) {
     final chatId = ([widget.myId, fid]..sort()).join('_');
     _subs[fid]?.cancel();
-    // Only listen to the meta-data, not the whole messages
     _subs[fid] = FirebaseDatabase.instance.ref('chats/$chatId').onValue.listen((event) {
       if (!mounted) return;
       final d = event.snapshot.value is Map
@@ -873,7 +886,9 @@ class _SortedChatListState extends State<_SortedChatList> {
               return confirmed;
             },
             onDismissed: (_) {
-              FirebaseDatabase.instance.ref("users/${widget.myId}/friends/$fid").remove().catchError((_){});
+              // Fixed: Remove only from my friends list (hides chat)
+              FirebaseDatabase.instance.ref("users/${widget.myId}/friends/$fid").remove()
+                .catchError((e)=>debugPrint("Dismiss Error: $e"));
             },
             background: Container(
               alignment: Alignment.centerRight,
@@ -1057,7 +1072,6 @@ class _FindState extends State<FindTab> {
         child: _q.isEmpty
             ? _FindEmptyView(myId: myId)
             : StreamBuilder(
-                // OPTIMIZED SEARCH: Using \uf8ff for better range
                 stream: FirebaseDatabase.instance.ref('users').orderByChild('username')
                     .startAt(_q.toLowerCase()).endAt('${_q.toLowerCase()}\uf8ff').onValue,
                 builder: (ctx, snap) {
@@ -1108,7 +1122,10 @@ class _FindState extends State<FindTab> {
                                     : _GaxChip(label: 'Add', icon: Icons.person_add_alt_1_rounded,
                                         onTap: () {
                                           HapticFeedback.mediumImpact();
-                                          FirebaseDatabase.instance.ref('users/$uid/req/$myId').set(true).catchError((_){});
+                                          // RULE FIX: users/$uid/req/$senderUid = true
+                                          // $uid is the target user, $senderUid is myId
+                                          FirebaseDatabase.instance.ref('users/$uid/req/$myId').set(true)
+                                            .catchError((e)=>debugPrint("Request Error: $e"));
                                         }),
                               ));
                             },
@@ -1156,14 +1173,28 @@ class _SocialState extends State<SocialTab> {
                 return _AnimatedListItem(index: e.key, child: _ContactRow(u: u,
                   trailing: Row(mainAxisSize: MainAxisSize.min, children:[
                     _RoundBtn(icon: Icons.close_rounded, color: Gx.rose,
-                      onTap: () { HapticFeedback.lightImpact(); FirebaseDatabase.instance.ref('users/${widget.myId}/req/${e.value}').remove().catchError((_){}); }),
+                      onTap: () { 
+                        HapticFeedback.lightImpact(); 
+                        // RULE FIX: Recipient can delete request (auth.uid == $uid)
+                        FirebaseDatabase.instance.ref('users/${widget.myId}/req/${e.value}').remove()
+                          .catchError((err)=>debugPrint("Decline Error: $err")); 
+                      }),
                     const SizedBox(width: 8),
                     _RoundBtn(icon: Icons.check_rounded, color: Gx.mint,
                       onTap: () {
                         HapticFeedback.mediumImpact();
-                        FirebaseDatabase.instance.ref('users/${widget.myId}/friends/${e.value}').set(true).catchError((_){});
-                        FirebaseDatabase.instance.ref('users/${e.value}/friends/${widget.myId}').set(true).catchError((_){});
-                        FirebaseDatabase.instance.ref('users/${widget.myId}/req/${e.value}').remove().catchError((_){});
+                        // RULE FIX: Friends list writes
+                        // 1. Add to MY friends list (auth.uid == $uid)
+                        FirebaseDatabase.instance.ref('users/${widget.myId}/friends/${e.value}').set(true)
+                          .catchError((err)=>debugPrint("Accept Me Error: $err"));
+                        
+                        // 2. Add to THEIR friends list (auth.uid == $fid)
+                        FirebaseDatabase.instance.ref('users/${e.value}/friends/${widget.myId}').set(true)
+                          .catchError((err)=>debugPrint("Accept Them Error: $err"));
+                        
+                        // 3. Remove request
+                        FirebaseDatabase.instance.ref('users/${widget.myId}/req/${e.value}').remove()
+                          .catchError((err)=>debugPrint("Remove Req Error: $err"));
                       }),
                   ]),
                 ));
@@ -1205,8 +1236,11 @@ class _SocialState extends State<SocialTab> {
                         title: 'Remove Friend', body: 'Remove ${u['name']} from your friends?',
                         confirmLabel: 'Remove', confirmClr: Gx.rose,
                         onConfirm: () {
-                          FirebaseDatabase.instance.ref('users/${widget.myId}/friends/${e.value}').remove().catchError((_){});
-                          FirebaseDatabase.instance.ref('users/${e.value}/friends/${widget.myId}').remove().catchError((_){});
+                          // RULE FIX: Removal
+                          FirebaseDatabase.instance.ref('users/${widget.myId}/friends/${e.value}').remove()
+                            .catchError((err)=>debugPrint("Remove Me Error: $err"));
+                          FirebaseDatabase.instance.ref('users/${e.value}/friends/${widget.myId}').remove()
+                            .catchError((err)=>debugPrint("Remove Them Error: $err"));
                           Navigator.pop(ctx);
                         })),
                   ]),
@@ -1387,7 +1421,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             'name': n.text.trim(), 'username': u.text.trim().toLowerCase(),
             'pfp': p.text.trim().isEmpty ? (widget.d['pfp'] ?? '') : p.text.trim(),
             'bio': b.text.trim(),
-          }).catchError((_){});
+          }).catchError((e)=>debugPrint("Update Profile Error: $e"));
           Navigator.pop(c);
         }, child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15))),
       ]),
@@ -1575,12 +1609,12 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     super.initState();
     final ids = [myId, widget.target['uid']]..sort();
     chatId = ids.join('_');
-    FirebaseDatabase.instance.ref('typing/$chatId/$myId').onDisconnect().set(false).catchError((_){});
-    FirebaseDatabase.instance.ref('users/$myId/status').set('online').catchError((_){});
-    FirebaseDatabase.instance.ref('users/$myId/status').onDisconnect().set('offline').catchError((_){});
+    FirebaseDatabase.instance.ref('typing/$chatId/$myId').onDisconnect().set(false).catchError((e)=>debugPrint("Disconnect Typing Error: $e"));
+    FirebaseDatabase.instance.ref('users/$myId/status').set('online').catchError((e)=>debugPrint("Online Error: $e"));
+    FirebaseDatabase.instance.ref('users/$myId/status').onDisconnect().set('offline').catchError((e)=>debugPrint("Disconnect Status Error: $e"));
     
-    // Optimized: Just reset counter on open
-    FirebaseDatabase.instance.ref('chats/$chatId/unread/$myId').set(0).catchError((_){});
+    // Reset counter on open
+    FirebaseDatabase.instance.ref('chats/$chatId/unread/$myId').set(0).catchError((e)=>debugPrint("Reset Unread Error: $e"));
     
     _loadPin(); _initChatMeta();
     _msgC.addListener(_msgListener);
@@ -1597,8 +1631,8 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     _msgC.removeListener(_msgListener);
     _msgC.dispose(); _imgC.dispose(); _srcC.dispose(); _scroll.dispose();
     _typingTimer?.cancel(); _sendAc.dispose();
-    FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((_){});
-    FirebaseDatabase.instance.ref('users/$myId/lastSeen').set(ServerValue.timestamp).catchError((_){});
+    FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((e)=>debugPrint("Dispose Typing Error: $e"));
+    FirebaseDatabase.instance.ref('users/$myId/lastSeen').set(ServerValue.timestamp).catchError((e)=>debugPrint("Dispose LastSeen Error: $e"));
     super.dispose();
   }
 
@@ -1613,17 +1647,19 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   });
 
   void _onTyping(String v) {
-    FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(true).catchError((_){});
+    FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(true).catchError((e)=>debugPrint("Typing Set Error: $e"));
     _typingTimer?.cancel();
-    _typingTimer = Timer(const Duration(seconds: 2), () => FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((_){}));
+    _typingTimer = Timer(const Duration(seconds: 2), () => FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((e)=>debugPrint("Typing Off Error: $e"));
   }
 
   void _toBottom() {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_scroll.hasClients) return;
-      _scroll.animateTo(_scroll.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 100) {
+        _scroll.animateTo(_scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+      }
     });
   }
 
@@ -1632,7 +1668,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     if (txt.isEmpty) return;
     HapticFeedback.lightImpact();
     _msgC.clear(); _sendAc.forward(from: 0);
-    FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((_){});
+    FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((e)=>debugPrint("Send Typing Off Error: $e"));
     final payload = <String, dynamic>{
       'senderId': myId, 'text': txt, 'timestamp': ServerValue.timestamp, 'read': false, 'type': 'text',
     };
@@ -1640,7 +1676,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
       payload['replyTo'] = { 'text': _replyMsg!['text'], 'senderId': _replyMsg!['senderId'], 'type': _replyMsg!['type'] ?? 'text' };
       if (mounted) setState(() => _replyMsg = null);
     }
-    await FirebaseDatabase.instance.ref('messages/$chatId').push().set(payload);
+    await FirebaseDatabase.instance.ref('messages/$chatId').push().set(payload).catchError((e)=>debugPrint("Send Msg Error: $e"));
     await _saveChatMeta('text', txt);
     if (!mounted) return;
     _toBottom();
@@ -1661,7 +1697,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     Navigator.pop(context);
     await FirebaseDatabase.instance.ref('messages/$chatId').push().set({
       'senderId': myId, 'text': url, 'timestamp': ServerValue.timestamp, 'read': false, 'type': 'image',
-    });
+    }).catchError((e)=>debugPrint("Send Img Error: $e"));
     await _saveChatMeta('image', url);
     if (!mounted) return;
     _toBottom();
@@ -1679,15 +1715,16 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
       'chats/$chatId/lastMsgSender': myId,
       'chats/$chatId/lastTs': ServerValue.timestamp,
       'chats/$chatId/updatedAt': ServerValue.timestamp,
-    });
+    }).catchError((e)=>debugPrint("Meta Save Error: $e"));
+    
     FirebaseDatabase.instance.ref('chats/$chatId/unread/$otherUid')
-        .set(ServerValue.increment(1)).catchError((_){});
+        .set(ServerValue.increment(1)).catchError((e)=>debugPrint("Unread Inc Error: $e"));
   }
-
+  
   void _initChatMeta() {
     FirebaseDatabase.instance.ref('chats/$chatId/members').update({
       myId: true, widget.target['uid'].toString(): true,
-    }).catchError((_) {});
+    }).catchError((e)=>debugPrint("Init Meta Error: $e"));
   }
 
   void _showForwardSheet(Map msg) {
@@ -1719,12 +1756,12 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                         'senderId': myId, 'text': fwdText, 'timestamp': ServerValue.timestamp, 'read': false,
                         'type': fwdType, 'forwarded': true,
                       };
-                      await FirebaseDatabase.instance.ref('messages/$toChatId').push().set(payload);
-                      await FirebaseDatabase.instance.ref('chats/$toChatId/members').update({myId: true, ids[i]: true});
+                      await FirebaseDatabase.instance.ref('messages/$toChatId').push().set(payload).catchError((e)=>debugPrint("Fwd Msg Error: $e"));
+                      await FirebaseDatabase.instance.ref('chats/$toChatId/members').update({myId: true, ids[i]: true}).catchError((e)=>debugPrint("Fwd Mem Error: $e"));
                       await FirebaseDatabase.instance.ref('chats/$toChatId').update({
                         'lastMsg': fwdType == 'image' ? '📷 Image' : (fwdText.length > 80 ? '${fwdText.substring(0,80)}…' : fwdText),
                         'lastMsgType': fwdType, 'lastMsgSender': myId, 'lastTs': ServerValue.timestamp, 'updatedAt': ServerValue.timestamp,
-                      });
+                      }).catchError((e)=>debugPrint("Fwd Meta Error: $e"));
                       if (mounted) Navigator.pop(c);
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Forwarded to ${u['name']}'), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 2)));
                     }, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -1753,20 +1790,14 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     final payload = <String,dynamic>{
       'senderId': myId, 'text': url, 'timestamp': ServerValue.timestamp, 'read': false, 'type': 'link',
     };
-    await FirebaseDatabase.instance.ref('messages/$chatId').push().set(payload);
+    await FirebaseDatabase.instance.ref('messages/$chatId').push().set(payload).catchError((e)=>debugPrint("Send Link Error: $e"));
     await _saveChatMeta('link', '🔗 $url');
     if (!mounted) return;
     _toBottom();
   }
 
   void _emojiSheet() {
-    const emojis =[
-      '😀','😂','🥰','😎','🤔','😭','🙏','🔥',
-      '💯','❤️','💜','💙','✨','🎉','👏','👀',
-      '😅','🤣','😍','🥺','😤','😴','🤗','😇',
-      '💪','🫡','🙌','🫶','🤝','👋','✌️','🤙',
-      '🍕','🎮','🚀','💎','🏆','🎯','⚡','🌟',
-    ];
+    const emojis =['😀','😂','🥰','😎','🤔','😭','🙏','🔥','💯','❤️','💜','💙','✨','🎉','👏','👀','😅','🤣','😍','🥺','😤','😴','🤗','😇','💪','🫡','🙌','🫶','🤝','👋','✌️','🤙','🍕','🎮','🚀','💎','🏆','🎯','⚡','🌟',];
     showModalBottomSheet(
       context: context, backgroundColor: dark ? Gx.d4 : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -1800,7 +1831,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
             onTap: () { Navigator.pop(c); showDialog(context: context, builder: (_) => ProfileDialog(user: widget.target)); }, dark: dark),
           _ActionRow(icon: Icons.push_pin_outlined, color: Gx.indigo, label: _pinMsg != null ? 'Unpin Message' : 'No Pinned Message',
             onTap: _pinMsg != null ? () {
-              FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){});
+              FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((e)=>debugPrint("Unpin Error: $e"));
               setState(() { _pinKey = null; _pinMsg = null; }); Navigator.pop(c);
             } : null, dark: dark),
           _ActionRow(icon: Icons.cleaning_services_outlined, color: Gx.amber, label: 'Clear Chat',
@@ -1809,10 +1840,10 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
               _gaxDialog(context, title: 'Clear Chat', body: 'Delete all messages? This cannot be undone.',
                 confirmLabel: 'Clear', confirmClr: Gx.rose,
                 onConfirm: () {
-                  FirebaseDatabase.instance.ref('messages/$chatId').remove().catchError((_){});
+                  FirebaseDatabase.instance.ref('messages/$chatId').remove().catchError((e)=>debugPrint("Clear Error: $e"));
                   FirebaseDatabase.instance.ref('chats/$chatId').update({
                      'lastMsg': '', 'lastMsgType': 'text', 'lastMsgSender': '',
-                  }).catchError((_){});
+                  }).catchError((e)=>debugPrint("Clear Meta Error: $e"));
                   Navigator.pop(context);
                 });
             }, dark: dark),
@@ -1823,8 +1854,8 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                 confirmLabel: 'Remove', confirmClr: Gx.rose,
                 onConfirm: () {
                   final otherUid = widget.target['uid'].toString();
-                  FirebaseDatabase.instance.ref('users/$myId/friends/$otherUid').remove().catchError((_){});
-                  FirebaseDatabase.instance.ref('users/$otherUid/friends/$myId').remove().catchError((_){});
+                  FirebaseDatabase.instance.ref('users/$myId/friends/$otherUid').remove().catchError((e)=>debugPrint("Unfriend Me Error: $e"));
+                  FirebaseDatabase.instance.ref('users/$otherUid/friends/$myId').remove().catchError((e)=>debugPrint("Unfriend Them Error: $e"));
                   Navigator.pop(context); Navigator.pop(context);
                 });
             }, dark: dark),
@@ -1863,14 +1894,13 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
 
   void _quickReact(String key) {
     HapticFeedback.mediumImpact();
-    FirebaseDatabase.instance.ref('messages/$chatId/$key/reactions/$myId').set('❤️').catchError((_){});
+    FirebaseDatabase.instance.ref('messages/$chatId/$key/reactions/$myId').set('❤️').catchError((e)=>debugPrint("React Error: $e"));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❤️ Reacted!'), behavior: SnackBarBehavior.floating, duration: Duration(milliseconds: 800)));
   }
 
   void _msgActions(String key, Map msg, bool isMe) {
     HapticFeedback.mediumImpact();
-    final dark = Theme.of(context).brightness == Brightness.dark;
     const emojis =['❤️', '😂', '👍', '😮', '😢', '🔥'];
     showModalBottomSheet(
       context: context, backgroundColor: dark ? Gx.d4 : Colors.white,
@@ -1880,7 +1910,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
         child: Column(mainAxisSize: MainAxisSize.min, children:[
           _SheetHandle(), const SizedBox(height: 12),
           Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: emojis.map((e) => _TapScale(onTap: () {
-              HapticFeedback.lightImpact(); FirebaseDatabase.instance.ref('messages/$chatId/$key/reactions/$myId').set(e).catchError((_){}); Navigator.pop(c);
+              HapticFeedback.lightImpact(); FirebaseDatabase.instance.ref('messages/$chatId/$key/reactions/$myId').set(e).catchError((err)=>debugPrint("React Emoji Error: $err")); Navigator.pop(c);
             }, child: Container(width: 50, height: 50, decoration: BoxDecoration(color: dark ? Gx.d5 : Gx.l2, borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Gx.violet.withOpacity(0.15))), child: Center(child: Text(e, style: const TextStyle(fontSize: 24)))))
           ).toList()),
@@ -1895,20 +1925,19 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
             }, dark: dark),
           if (isMe) _ActionRow(icon: Icons.push_pin_outlined, color: Gx.indigo, label: 'Pin Message',
             onTap: () {
-              FirebaseDatabase.instance.ref('chats/$chatId/pinned').set(key).catchError((_){});
+              FirebaseDatabase.instance.ref('chats/$chatId/pinned').set(key).catchError((err)=>debugPrint("Pin Error: $err"));
               setState(() { _pinKey = key; _pinMsg = msg; }); Navigator.pop(c);
             }, dark: dark),
           if (isMe) _ActionRow(icon: Icons.delete_outline_rounded, color: Gx.rose, label: 'Delete',
             onTap: () async {
               final ref = FirebaseDatabase.instance.ref;
-              await ref('messages/$chatId/$key').remove().catchError((_){});
+              await ref('messages/$chatId/$key').remove().catchError((err)=>debugPrint("Delete Error: $err"));
               if (_pinKey == key) {
-                ref('chats/$chatId/pinned').remove().catchError((_){});
+                ref('chats/$chatId/pinned').remove().catchError((err)=>debugPrint("Unpin Del Error: $err"));
                 setState(() { _pinKey = null; _pinMsg = null; });
               }
               if (mounted) Navigator.pop(c);
               
-              // Smart check to auto-update Home Page preview 
               final lastMsgCheck = await ref('messages/$chatId').orderByKey().limitToLast(1).get();
               if (lastMsgCheck.exists && lastMsgCheck.value != null) {
                   final valMap = lastMsgCheck.value as Map;
@@ -1920,12 +1949,12 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
                   await ref('chats/$chatId').update({
                      'lastMsg': preview, 'lastMsgType': type,
                      'lastMsgSender': v['senderId'], 'lastTs': v['timestamp'],
-                  });
+                  }).catchError((err)=>debugPrint("Meta Update Error: $err"));
               } else {
                   await ref('chats/$chatId').update({
                      'lastMsg': 'No messages', 'lastMsgType': 'text',
                      'lastMsgSender': '',
-                  });
+                  }).catchError((err)=>debugPrint("Meta Clear Error: $err"));
               }
             }, dark: dark),
         ]),
@@ -2008,9 +2037,8 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
       ),
       body: Column(children:[
         if (_pinMsg != null) _PinBanner(text: _pinMsg!['type'] == 'image' ? '📷 Image' : (_pinMsg!['text'] ?? ''),
-          onDismiss: () { FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){}); setState(() { _pinKey = null; _pinMsg = null; }); }, dark: dark),
+          onDismiss: () { FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((e)=>debugPrint("Pin Dismiss Error: $e")); setState(() { _pinKey = null; _pinMsg = null; }); }, dark: dark),
         Expanded(child: StreamBuilder(
-          // OPTIMIZED: Limit to last 100 messages for performance
           stream: FirebaseDatabase.instance.ref('messages/$chatId').limitToLast(100).onValue,
           builder: (ctx, snap) {
             if (!snap.hasData || snap.data!.snapshot.value == null)
@@ -2055,7 +2083,6 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
   bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-// MEMORY-SAFE LINK SHEET UI COMPONENT
 class _LinkSheetUI extends StatefulWidget {
   final ValueChanged<String> onSend;
   const _LinkSheetUI({required this.onSend});
@@ -2085,7 +2112,6 @@ class _LinkSheetUIState extends State<_LinkSheetUI> {
 }
 
 
-// BUBBLE ENTRY
 class _BubbleEntry extends StatefulWidget {
   final Widget child; final bool isMe;
   const _BubbleEntry({required this.child, required this.isMe});
@@ -2101,7 +2127,6 @@ class _BubbleEntryState extends State<_BubbleEntry> with SingleTickerProviderSta
   Widget build(BuildContext ctx) => FadeTransition(opacity: _fade, child: SlideTransition(position: _slide, child: widget.child));
 }
 
-// BUBBLE
 class _BubbleWidget extends StatelessWidget {
   final Map msg; final bool isMe, dark; final DateTime ts;
   final String myId; final VoidCallback onLongPress, onDoubleTap;
