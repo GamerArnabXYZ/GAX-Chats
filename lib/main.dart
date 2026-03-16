@@ -810,6 +810,7 @@ class _SortedChatListState extends State<_SortedChatList> {
   void _subscribeSingle(String fid) {
     final chatId = ([widget.myId, fid]..sort()).join('_');
     _subs[fid]?.cancel();
+    // Only listen to the meta-data, not the whole messages
     _subs[fid] = FirebaseDatabase.instance.ref('chats/$chatId').onValue.listen((event) {
       if (!mounted) return;
       final d = event.snapshot.value is Map
@@ -955,7 +956,7 @@ class _ConvRow extends StatelessWidget {
                                 duration: const Duration(milliseconds: 200),
                                 layoutBuilder: (currentChild, previousChildren) {
                                   return Stack(
-                                    alignment: Alignment.centerLeft, // ✔️ GAP PERFECTLY FIX KAREGA
+                                    alignment: Alignment.centerLeft,
                                     children:[
                                       ...previousChildren,
                                       if (currentChild != null) currentChild,
@@ -1056,8 +1057,9 @@ class _FindState extends State<FindTab> {
         child: _q.isEmpty
             ? _FindEmptyView(myId: myId)
             : StreamBuilder(
+                // OPTIMIZED SEARCH: Using \uf8ff for better range
                 stream: FirebaseDatabase.instance.ref('users').orderByChild('username')
-                    .startAt(_q.toLowerCase()).endAt('${_q.toLowerCase()}').onValue,
+                    .startAt(_q.toLowerCase()).endAt('${_q.toLowerCase()}\uf8ff').onValue,
                 builder: (ctx, snap) {
                   if (!snap.hasData) return const Center(child: _GaxSpinner());
                   return StreamBuilder(
@@ -1576,7 +1578,11 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').onDisconnect().set(false).catchError((_){});
     FirebaseDatabase.instance.ref('users/$myId/status').set('online').catchError((_){});
     FirebaseDatabase.instance.ref('users/$myId/status').onDisconnect().set('offline').catchError((_){});
-    _markRead(); _loadPin(); _initChatMeta();
+    
+    // Optimized: Just reset counter on open
+    FirebaseDatabase.instance.ref('chats/$chatId/unread/$myId').set(0).catchError((_){});
+    
+    _loadPin(); _initChatMeta();
     _msgC.addListener(_msgListener);
   }
 
@@ -1594,21 +1600,6 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((_){});
     FirebaseDatabase.instance.ref('users/$myId/lastSeen').set(ServerValue.timestamp).catchError((_){});
     super.dispose();
-  }
-
-  void _markRead() {
-    FirebaseDatabase.instance.ref('messages/$chatId').get().then((s) {
-      if (!mounted || s.value == null) return;
-      final map = s.value as Map? ?? {};
-      final Map<String, dynamic> updates = {};
-      map.forEach((k, v) {
-        final msg = v is Map ? v : {};
-        if (msg['senderId'] != myId && msg['read'] != true)
-          updates['messages/$chatId/$k/read'] = true;
-      });
-      if (updates.isNotEmpty) FirebaseDatabase.instance.ref().update(updates).catchError((_){});
-      FirebaseDatabase.instance.ref('chats/$chatId/unread/$myId').set(0).catchError((_){});
-    });
   }
 
   void _loadPin() => FirebaseDatabase.instance.ref('chats/$chatId/pinned').get().then((s) {
@@ -1652,7 +1643,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     await FirebaseDatabase.instance.ref('messages/$chatId').push().set(payload);
     await _saveChatMeta('text', txt);
     if (!mounted) return;
-    _markRead(); _toBottom();
+    _toBottom();
   }
 
   Future<void> _sendImg() async {
@@ -1765,7 +1756,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     await FirebaseDatabase.instance.ref('messages/$chatId').push().set(payload);
     await _saveChatMeta('link', '🔗 $url');
     if (!mounted) return;
-    _markRead(); _toBottom();
+    _toBottom();
   }
 
   void _emojiSheet() {
@@ -2019,7 +2010,8 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
         if (_pinMsg != null) _PinBanner(text: _pinMsg!['type'] == 'image' ? '📷 Image' : (_pinMsg!['text'] ?? ''),
           onDismiss: () { FirebaseDatabase.instance.ref('chats/$chatId/pinned').remove().catchError((_){}); setState(() { _pinKey = null; _pinMsg = null; }); }, dark: dark),
         Expanded(child: StreamBuilder(
-          stream: FirebaseDatabase.instance.ref('messages/$chatId').onValue,
+          // OPTIMIZED: Limit to last 100 messages for performance
+          stream: FirebaseDatabase.instance.ref('messages/$chatId').limitToLast(100).onValue,
           builder: (ctx, snap) {
             if (!snap.hasData || snap.data!.snapshot.value == null)
               return Center(child: Column(mainAxisSize: MainAxisSize.min, children:[
@@ -2888,7 +2880,6 @@ class _OnlineFriendsStripState extends State<_OnlineFriendsStrip> {
     for (var s in _subs) { s.cancel(); }
     _subs.clear();
     
-    // Sirf online/offline variable sun'ne k liye halke streams
     for (String fid in widget.friendIds) {
       final s = FirebaseDatabase.instance.ref('users/$fid/status').onValue.listen((e) {
         if (!mounted) return;
@@ -2909,10 +2900,8 @@ class _OnlineFriendsStripState extends State<_OnlineFriendsStrip> {
 
   @override
   Widget build(BuildContext ctx) {
-    // Only fetch ids jo asal me true (online) h
     final onlineIds = _onlineStatus.entries.where((e) => e.value).map((e) => e.key).toList();
 
-    // <==== GAP KA MAIN FIX YAHIN HAI: 0 user pr kuch space nhi bnegi ===>
     if (onlineIds.isEmpty) return const SizedBox.shrink();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
@@ -3174,7 +3163,7 @@ class _LinkEmbed extends StatelessWidget {
                 child: const Row(mainAxisSize: MainAxisSize.min, children:[
                   Icon(Icons.open_in_new_rounded, size: 11, color: Colors.white),
                   SizedBox(width: 4),
-                  Text('Tap to copy link', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                  Text('Tap to open', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
                 ]),
               ),
             ]),
