@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:urlFuture<void> _auth_launcher/url_launcher.dart';
 import 'dart:math' as math;
 
 // ═══════════════════════════════════════════════════
@@ -386,19 +386,37 @@ class _LoginState extends State<LoginScreen> with TickerProviderStateMixin {
   @override void dispose() { _emailC.dispose(); _passC.dispose(); _bgAc.dispose(); _entAc.dispose(); super.dispose(); }
 
   Future<void> _auth() async {
-    if (_emailC.text.trim().isEmpty || _passC.text.trim().isEmpty) {
-      if (mounted) setState(() => _err = 'Enter email and password');
+    final email = _emailC.text.trim();
+    final pass = _passC.text.trim();
+
+    if (email.isEmpty || pass.isEmpty) {
+      if (mounted) setState(() => _err = 'Email & password cannot be empty');
       return;
     }
+    
     if (mounted) setState(() { _busy = true; _err = null; });
+    
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(email: _emailC.text.trim(), password: _passC.text.trim());
-    } catch (_) {
-      try {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(email: _emailC.text.trim(), password: _passC.text.trim());
-      } catch (e) { if (mounted) setState(() => _err = 'Invalid credentials or weak password (min 6 chars)'); }
+      // Step 1: Login Check 
+      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
+      
+    } on FirebaseAuthException catch (e) {
+      // Step 2: Custom Handling instead of blanket catching
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+        try {
+            // Sirf in scenario mein naya user bnao, galat password ya internet drop hone par nahi.
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: pass);
+        } on FirebaseAuthException catch (regError) {
+             if (mounted) setState(() => _err = regError.message ?? 'Sign up failed.');
+        }
+      } else {
+        if (mounted) setState(() => _err = 'Invalid password or connection error');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _err = 'Unexpected error occurred.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    if (mounted) setState(() => _busy = false);
   }
 
   @override
