@@ -211,6 +211,23 @@ class _AuthGateState extends State<_AuthGate> {
     db.ref('users/$uid/status').set('online').catchError((e) => debugPrint('Presence: $e'));
     db.ref('users/$uid/status').onDisconnect().set('offline').catchError((e) => debugPrint('Presence dc: $e'));
     db.ref('users/$uid/lastSeen').onDisconnect().set(ServerValue.timestamp).catchError((e) => debugPrint('LastSeen dc: $e'));
+    _migrateMissingMembers(uid);
+  }
+  Future<void> _migrateMissingMembers(String myId) async {
+    try {
+      final snap = await FirebaseDatabase.instance.ref('users/$myId/friends').get();
+      if (!snap.exists || snap.value == null) return;
+      final friends = (snap.value as Map).keys.map((k) => k.toString()).toList();
+      final db = FirebaseDatabase.instance;
+      for (final fid in friends) {
+        final chatId = ([myId, fid]..sort()).join('_');
+        final m = await db.ref('chats/$chatId/members/$myId').get();
+        if (!m.exists) {
+          await db.ref('chats/$chatId/members').update({myId: true, fid: true})
+              .catchError((e) => debugPrint('Migrate $chatId: $e'));
+        }
+      }
+    } catch (e) { debugPrint('Migration: $e'); }
   }
   @override
   Widget build(BuildContext ctx) => StreamBuilder<User?>(
@@ -988,13 +1005,26 @@ class _SocialState extends State<SocialTab> {
     );
   }
 }
-class ProfileTab extends StatelessWidget {
+class ProfileTab extends StatefulWidget {
   final ThemeCtrl tc;
   const ProfileTab({super.key, required this.tc});
+  @override State<ProfileTab> createState() => _ProfileTabState();
+}
+class _ProfileTabState extends State<ProfileTab> {
+  bool _isAdmin = false;
+  @override
+  void initState() {
+    super.initState();
+    final myId = FirebaseAuth.instance.currentUser!.uid;
+    FirebaseDatabase.instance.ref('admins/$myId').get().then((snap) {
+      if (mounted && snap.exists) setState(() => _isAdmin = true);
+    });
+  }
   @override
   Widget build(BuildContext ctx) {
     final myId = FirebaseAuth.instance.currentUser!.uid;
     final dark  = Theme.of(ctx).brightness == Brightness.dark;
+    final tc = widget.tc;
     return StreamBuilder(
       stream: FirebaseDatabase.instance.ref('users/$myId').onValue,
       builder: (_, snap) {
@@ -1054,6 +1084,14 @@ class ProfileTab extends StatelessWidget {
               iconGrad: const LinearGradient(colors: [Color(0xFF005B9F), Gx.cyan]),
               title: 'Support & Feedback',
               onTap: () => _gaxPush(ctx, const SupportEntryPoint())),
+            if (_isAdmin) ...[
+              _SectionLabel('ADMIN'),
+              _PrefRow(icon: Icons.dashboard_outlined, dark: dark,
+                iconGrad: const LinearGradient(colors: [Color(0xFF5B0090), Gx.violet]),
+                title: 'Feedback Dashboard',
+                subtitle: 'View all user bug reports & feedback',
+                onTap: () => _gaxPush(ctx, const FeedbackDashboard())),
+            ],
             _PrefRow(icon: Icons.notifications_outlined, dark: dark,
               iconGrad: const LinearGradient(colors: [Color(0xFF7B4F00), Gx.amber]),
               title: 'Notifications', subtitle: 'Message sounds & vibration',
