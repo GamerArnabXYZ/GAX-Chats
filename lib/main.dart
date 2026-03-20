@@ -203,16 +203,55 @@ class _AuthGate extends StatefulWidget {
   @override State<_AuthGate> createState() => _AuthGateState();
 }
 class _AuthGateState extends State<_AuthGate> {
-  String? _lastUid;
+  // _screen: null=loading, 0=login, 1=profileSetup, 2=main
+  int? _screen;
+  String? _uid;
+  StreamSubscription? _authSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user == null) {
+        if (mounted) setState(() { _screen = 0; _uid = null; });
+      } else {
+        _uid = user.uid;
+        _checkProfile(user.uid);
+      }
+    });
+  }
+
+  Future<void> _checkProfile(String uid) async {
+    if (mounted) setState(() => _screen = null);
+    try {
+      final snap = await FirebaseDatabase.instance.ref('users/$uid').get();
+      if (!mounted) return;
+      if (!snap.exists || snap.value == null) {
+        setState(() => _screen = 1);
+        return;
+      }
+      final map = Map<String, dynamic>.from(snap.value as Map);
+      final username = map['username']?.toString().trim() ?? '';
+      if (username.isEmpty) {
+        setState(() => _screen = 1);
+        return;
+      }
+      _setPresence(uid);
+      _migrateMissingMembers(uid);
+      setState(() => _screen = 2);
+    } catch (e) {
+      debugPrint('Profile check: $e');
+      if (mounted) setState(() => _screen = 1);
+    }
+  }
+
   void _setPresence(String uid) {
-    if (_lastUid == uid) return;
-    _lastUid = uid;
     final db = FirebaseDatabase.instance;
     db.ref('users/$uid/status').set('online').catchError((e) => debugPrint('Presence: $e'));
     db.ref('users/$uid/status').onDisconnect().set('offline').catchError((e) => debugPrint('Presence dc: $e'));
     db.ref('users/$uid/lastSeen').onDisconnect().set(ServerValue.timestamp).catchError((e) => debugPrint('LastSeen dc: $e'));
-    _migrateMissingMembers(uid);
   }
+
   Future<void> _migrateMissingMembers(String myId) async {
     try {
       final snap = await FirebaseDatabase.instance.ref('users/$myId/friends').get();
@@ -229,28 +268,20 @@ class _AuthGateState extends State<_AuthGate> {
       }
     } catch (e) { debugPrint('Migration: $e'); }
   }
+
   @override
-  Widget build(BuildContext ctx) => StreamBuilder<User?>(
-    stream: FirebaseAuth.instance.authStateChanges(),
-    builder: (ctx, snap) {
-      if (snap.connectionState == ConnectionState.waiting) return const _Splash();
-      if (!snap.hasData) { _lastUid = null; return const LoginScreen(); }
-      final uid = snap.data!.uid;
-      return StreamBuilder(
-        stream: FirebaseDatabase.instance.ref('users/$uid').onValue,
-        builder: (_, db) {
-          if (db.connectionState == ConnectionState.waiting) return const _Splash();
-          if (!db.hasData) return const _Splash();
-          final d = db.data!.snapshot.value;
-          if (d == null) return const ProfileSetup();
-          final map = Map<String, dynamic>.from(d as Map? ?? {});
-          if (map['username'] == null || map['username'].toString().trim().isEmpty) return const ProfileSetup();
-          _setPresence(uid);
-          return MainScreen(tc: widget.tc);
-        },
-      );
-    },
-  );
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext ctx) {
+    if (_screen == null) return const _Splash();
+    if (_screen == 0)    return const LoginScreen();
+    if (_screen == 1)    return ProfileSetup(onComplete: () => _checkProfile(_uid!));
+    return MainScreen(tc: widget.tc);
+  }
 }
 void _showErrorSnackbar(BuildContext ctx, String msg) {
   if (!ctx.mounted) return;
@@ -410,7 +441,8 @@ class _NebulaPainter extends CustomPainter {
   @override bool shouldRepaint(_NebulaPainter o) => o.t != t;
 }
 class ProfileSetup extends StatefulWidget {
-  const ProfileSetup({super.key});
+  final VoidCallback? onComplete;
+  const ProfileSetup({super.key, this.onComplete});
   @override State<ProfileSetup> createState() => _PSState();
 }
 class _PSState extends State<ProfileSetup> {
@@ -441,13 +473,15 @@ class _PSState extends State<ProfileSetup> {
       await FirebaseDatabase.instance.ref('users/$uid').set(data);
       // Wait for Firebase to confirm write before releasing busy state
       // This prevents the StreamBuilder from flickering
-      await Future.delayed(const Duration(milliseconds: 800));
     } catch (e) {
       debugPrint('Profile save error: $e');
       if (mounted) setState(() { _busy = false; _err = 'Failed to save. Check connection.'; });
       return;
     }
-    if (mounted) setState(() => _busy = false);
+    if (mounted) {
+      setState(() => _busy = false);
+      widget.onComplete?.call();
+    }
   }
 
   @override
