@@ -240,8 +240,11 @@ class _AuthGateState extends State<_AuthGate> {
         stream: FirebaseDatabase.instance.ref('users/$uid').onValue,
         builder: (_, db) {
           if (db.connectionState == ConnectionState.waiting) return const _Splash();
-          final d = db.data?.snapshot.value as Map?;
-          if (d == null || d['username'] == null) return const ProfileSetup();
+          if (!db.hasData) return const _Splash();
+          final d = db.data!.snapshot.value;
+          if (d == null) return const ProfileSetup();
+          final map = Map<String, dynamic>.from(d as Map? ?? {});
+          if (map['username'] == null || map['username'].toString().trim().isEmpty) return const ProfileSetup();
           _setPresence(uid);
           return MainScreen(tc: widget.tc);
         },
@@ -430,11 +433,15 @@ class _PSState extends State<ProfileSetup> {
     try {
       final uid  = FirebaseAuth.instance.currentUser!.uid;
       final name = _n.text.trim();
-      await FirebaseDatabase.instance.ref('users/$uid').set({
+      final data = {
         'uid': uid, 'name': name, 'username': username, 'bio': _b.text.trim(),
         'pfp': 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=0C0D1E&color=7C5CFC&bold=true&size=200',
         'status': 'online', 'createdAt': ServerValue.timestamp,
-      });
+      };
+      await FirebaseDatabase.instance.ref('users/$uid').set(data);
+      // Wait for Firebase to confirm write before releasing busy state
+      // This prevents the StreamBuilder from flickering
+      await Future.delayed(const Duration(milliseconds: 800));
     } catch (e) {
       debugPrint('Profile save error: $e');
       if (mounted) setState(() { _busy = false; _err = 'Failed to save. Check connection.'; });
@@ -442,6 +449,7 @@ class _PSState extends State<ProfileSetup> {
     }
     if (mounted) setState(() => _busy = false);
   }
+
   @override
   Widget build(BuildContext ctx) {
     final dark = Theme.of(ctx).brightness == Brightness.dark;
