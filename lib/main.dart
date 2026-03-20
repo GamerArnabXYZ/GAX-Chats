@@ -236,13 +236,13 @@ class _AuthGateState extends State<_AuthGate> {
       if (snap.connectionState == ConnectionState.waiting) return const _Splash();
       if (!snap.hasData) { _lastUid = null; return const LoginScreen(); }
       final uid = snap.data!.uid;
-      _setPresence(uid);
       return StreamBuilder(
         stream: FirebaseDatabase.instance.ref('users/$uid').onValue,
         builder: (_, db) {
           if (db.connectionState == ConnectionState.waiting) return const _Splash();
           final d = db.data?.snapshot.value as Map?;
           if (d == null || d['username'] == null) return const ProfileSetup();
+          _setPresence(uid);
           return MainScreen(tc: widget.tc);
         },
       );
@@ -420,21 +420,26 @@ class _PSState extends State<ProfileSetup> {
       if (mounted) setState(() => _err = 'Name & username required');
       return;
     }
-    if (!mounted) return;
-    setState(() { _busy = true; _err = null; });
     final username = _u.text.trim().toLowerCase();
-    final existing = await FirebaseDatabase.instance.ref('users').orderByChild('username').equalTo(username).limitToFirst(1).get();
-    if (existing.exists && existing.value != null) {
-      setState(() { _busy = false; _err = 'Username already taken'; });
+    if (!RegExp(r'^[a-z0-9_]{3,20}$').hasMatch(username)) {
+      if (mounted) setState(() => _err = 'Username: 3-20 chars, only a-z 0-9 _');
       return;
     }
-    final uid  = FirebaseAuth.instance.currentUser!.uid;
-    final name = _n.text.trim();
-    await FirebaseDatabase.instance.ref('users/$uid').set({
-      'uid': uid, 'name': name, 'username': username, 'bio': _b.text.trim(),
-      'pfp': 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=0C0D1E&color=7C5CFC&bold=true&size=200',
-      'status': 'online', 'createdAt': ServerValue.timestamp,
-    }).catchError((e) { debugPrint('Profile save: $e'); if (mounted) _showErrorSnackbar(context, 'Failed to save profile'); });
+    if (!mounted) return;
+    setState(() { _busy = true; _err = null; });
+    try {
+      final uid  = FirebaseAuth.instance.currentUser!.uid;
+      final name = _n.text.trim();
+      await FirebaseDatabase.instance.ref('users/$uid').set({
+        'uid': uid, 'name': name, 'username': username, 'bio': _b.text.trim(),
+        'pfp': 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=0C0D1E&color=7C5CFC&bold=true&size=200',
+        'status': 'online', 'createdAt': ServerValue.timestamp,
+      });
+    } catch (e) {
+      debugPrint('Profile save error: $e');
+      if (mounted) setState(() { _busy = false; _err = 'Failed to save. Check connection.'; });
+      return;
+    }
     if (mounted) setState(() => _busy = false);
   }
   @override
@@ -1350,8 +1355,6 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     _pendingTag = widget.initialFeedbackTag;
     final db = FirebaseDatabase.instance;
     db.ref('typing/$chatId/$myId').onDisconnect().set(false).catchError((e) => debugPrint('Typing dc: $e'));
-    db.ref('users/$myId/status').set('online').catchError((e) => debugPrint('Status: $e'));
-    db.ref('users/$myId/status').onDisconnect().set('offline').catchError((e) => debugPrint('Status dc: $e'));
     db.ref('chats/$chatId/unread/$myId').set(0).catchError((e) => debugPrint('Unread reset: $e'));
     _loadPin();
     _initChatMeta();
