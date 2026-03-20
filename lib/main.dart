@@ -465,12 +465,14 @@ class _PSState extends State<ProfileSetup> {
     try {
       final uid  = FirebaseAuth.instance.currentUser!.uid;
       final name = _n.text.trim();
-      final data = {
-        'uid': uid, 'name': name, 'username': username, 'bio': _b.text.trim(),
+      await FirebaseDatabase.instance.ref('users/$uid').set({
+        'uid': uid,
+        'name': name,
+        'username': username,
+        'bio': _b.text.trim(),
         'pfp': 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=0C0D1E&color=7C5CFC&bold=true&size=200',
-        'status': 'online', 'createdAt': ServerValue.timestamp,
-      };
-      await FirebaseDatabase.instance.ref('users/$uid').set(data);
+        'createdAt': ServerValue.timestamp,
+      });
       // Wait for Firebase to confirm write before releasing busy state
       // This prevents the StreamBuilder from flickering
     } catch (e) {
