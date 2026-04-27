@@ -1,4 +1,4 @@
-name: 🔨 Release APK Build
+name: 🚀 Parallel Release Build (APK & Web)
 
 on:
   push:
@@ -9,10 +9,12 @@ permissions:
   contents: write
 
 jobs:
-  build-release:
-    name: Build Release APK
+  # ---------------------------------------------------------
+  # JOB 1: ANDROID BUILD (APK)
+  # ---------------------------------------------------------
+  build-apk:
+    name: 🤖 Build Android APK
     runs-on: ubuntu-latest
-
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
@@ -33,12 +35,8 @@ jobs:
       - name: 📦 Get Dependencies
         run: flutter pub get
 
-      - name: 🔍 Analyze Code
-        run: flutter analyze --no-fatal-infos
-        continue-on-error: true
-
       - name: 🔨 Build Release APK
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
 
       - name: 🏷️ Delete Old Release
         run: |
@@ -52,18 +50,40 @@ jobs:
         with:
           tag_name: latest-build
           name: "✅ Latest APK Build"
-          body: "Auto-built release APK — direct download!"
+          body: "Auto-built release APK — split by ABI for better performance."
           prerelease: true
           files: |
             build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
             build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🔨 Build Web
+  # ---------------------------------------------------------
+  # JOB 2: WEB BUILD (HTML RENDERER)
+  # ---------------------------------------------------------
+  build-web:
+    name: 🌐 Build Flutter Web
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get Dependencies
+        run: flutter pub get
+
+      - name: 🔨 Build Web (HTML Mode)
         run: |
           flutter build web --release \
             --web-renderer html \
             --base-href "/${{ github.event.repository.name }}/"
-            
+
       - name: 🚀 Deploy to Web Branch
         uses: peaceiris/actions-gh-pages@v4
         with:
