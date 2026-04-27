@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <base href="/GAX-Chats/">
+  <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,18 +11,6 @@
   <link rel="icon" type="image/png" href="favicon.png">
 
   <title>GAX Chats</title>
-
-  <!-- ════════════════════════════════════
-       iOS 12.6 BLACK SCREEN FIX (POLYFILLS)
-       Inke bina iOS 12 modern JS nahi samajhta
-  ════════════════════════════════════ -->
-  <script>
-    // globalThis fix for iOS 12/13
-    if (typeof globalThis === 'undefined') { window.globalThis = window; }
-  </script>
-  <!-- Polyfill for ResizeObserver and modern JS features -->
-  <script src="https://unpkg.com/resize-observer-polyfill@1.5.1/dist/ResizeObserver.js"></script>
-  <script src="https://unpkg.com/core-js-bundle@3.37.1/minified.js"></script>
 
   <style>
     :root {
@@ -100,6 +88,7 @@
       display: flex; flex-direction: column; align-items: center; gap: 32px;
     }
 
+    /* Logo */
     .logo-wrap { position: relative; width: 100px; height: 100px; }
     .logo-ring {
       position: absolute; inset: -6px; border-radius: 50%;
@@ -131,6 +120,7 @@
       to   { transform: scale(1.06); }
     }
 
+    /* App name */
     .app-name {
       display: flex; flex-direction: column; align-items: center; gap: 6px;
       animation: fadeUp 0.8s ease 0.2s both;
@@ -149,6 +139,7 @@
     @keyframes shimmer { to { background-position: 200% center; } }
     .app-name p { font-size: 13px; color: var(--tx2); letter-spacing: 0.3px; font-weight: 500; }
 
+    /* Progress */
     .progress-wrap {
       width: 180px; display: flex; flex-direction: column; align-items: center; gap: 10px;
       animation: fadeUp 0.8s ease 0.4s both;
@@ -168,6 +159,10 @@
       animation: fadeUp 1s ease 0.8s both;
     }
 
+    /* ════════════════════════════════════
+       APK DOWNLOAD BANNER
+       fixed · no close · unclearable
+    ════════════════════════════════════ */
     #apk-banner {
       position: fixed;
       bottom: 20px;
@@ -176,15 +171,25 @@
       z-index: 8888;
       width: calc(100% - 32px);
       max-width: 420px;
-      background: linear-gradient(135deg, rgba(17,18,40,0.97) 0%, rgba(12,13,30,0.97) 100%);
+
+      background: linear-gradient(135deg,
+        rgba(17,18,40,0.97) 0%,
+        rgba(12,13,30,0.97) 100%);
       border: 1px solid rgba(124,92,252,0.30);
       border-radius: 18px;
       padding: 13px 15px;
+
       display: flex;
       align-items: center;
       gap: 13px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.60);
+
+      box-shadow:
+        0 8px 32px rgba(0,0,0,0.60),
+        0 0 0 1px rgba(124,92,252,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+
       animation: bannerSlide 0.7s cubic-bezier(0.34,1.56,0.64,1) 1.4s both;
+      pointer-events: all;
     }
 
     @keyframes bannerSlide {
@@ -192,46 +197,98 @@
       to   { opacity: 1; transform: translateX(-50%) translateY(0)     scale(1); }
     }
 
+    /* Top shimmer line */
+    #apk-banner::before {
+      content: '';
+      position: absolute; top: 0; left: 20px; right: 20px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,92,252,0.55), rgba(0,212,255,0.35), transparent);
+      border-radius: 99px;
+    }
+
+    /* APK icon */
     .apk-icon {
       flex-shrink: 0;
       width: 44px; height: 44px; border-radius: 13px;
       background: linear-gradient(135deg, #7C5CFC, #00D4FF);
       display: flex; align-items: center; justify-content: center;
       font-size: 22px;
+      box-shadow: 0 4px 16px rgba(124,92,252,0.40);
+      animation: iconFloat 3s ease-in-out infinite alternate;
+    }
+    @keyframes iconFloat {
+      from { transform: translateY(0px); }
+      to   { transform: translateY(-3px); }
     }
 
+    /* Text */
     .apk-text { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-    .apk-text strong { font-size: 13px; font-weight: 700; color: var(--tx1); }
-    .apk-text span   { font-size: 10.5px; color: var(--tx2); }
+    .apk-text strong { font-size: 13px; font-weight: 700; color: var(--tx1); white-space: nowrap; }
+    .apk-text span   { font-size: 10.5px; color: var(--tx2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+    /* Download button */
     .apk-btn {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: 6px;
       padding: 9px 14px;
       background: linear-gradient(135deg, #7C5CFC 0%, #5B3FD4 100%);
       border-radius: 11px;
       color: #fff;
-      font-size: 12px; font-weight: 700;
-      text-decoration: none;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.2px;
+      text-decoration: none; white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(124,92,252,0.45);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      position: relative; overflow: hidden;
+    }
+    .apk-btn::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.14), transparent);
+      border-radius: 11px;
+    }
+    .apk-btn:hover  { transform: scale(1.05); box-shadow: 0 6px 22px rgba(124,92,252,0.65); }
+    .apk-btn:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(124,92,252,0.35); }
+
+    .dl-icon { width: 13px; height: 13px; fill: none; stroke: #fff; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Pulse ring on button — draws attention */
+    .apk-btn-wrap { position: relative; flex-shrink: 0; }
+    .apk-pulse {
+      position: absolute; inset: -4px;
+      border-radius: 15px;
+      border: 1.5px solid rgba(124,92,252,0.5);
+      animation: pulsRing 2s ease-out infinite;
+      pointer-events: none;
+    }
+    @keyframes pulsRing {
+      0%   { opacity: 0.7; transform: scale(1); }
+      100% { opacity: 0;   transform: scale(1.18); }
     }
   </style>
 </head>
 
 <body>
+
+  <!-- ══ LOADING SCREEN ═══════════════════════════ -->
   <div id="gax-loader">
     <div class="mesh"></div>
     <div class="grid-overlay"></div>
     <div class="particles" id="particles"></div>
+
     <div class="loader-content">
       <div class="logo-wrap">
         <div class="logo-ring"></div>
         <div class="logo-box">
-          <img src="assets/logo.png" alt="GAX" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <img src="assets/logo.png" alt="GAX"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
           <span class="logo-bolt" style="display:none">⚡</span>
         </div>
       </div>
+
       <div class="app-name">
         <h1>GAX Chats</h1>
         <p>Fast · Secure · Yours</p>
       </div>
+
       <div class="progress-wrap">
         <div class="progress-track">
           <div class="progress-bar" id="progress-bar"></div>
@@ -239,64 +296,73 @@
         <span class="progress-label" id="progress-label">Loading…</span>
       </div>
     </div>
+
     <div class="bottom-tag">Built by GamerArnabXYZ · ArnabLabZ Studio</div>
   </div>
 
+  <!-- ══ APK BANNER — no close button ════════════ -->
   <div id="apk-banner">
     <div class="apk-icon">📲</div>
     <div class="apk-text">
       <strong>Get the Android App</strong>
-      <span>Faster · Native Experience</span>
+      <span>Faster · Native · No browser needed</span>
     </div>
-    <a class="apk-btn" href="https://github.com/GamerArnabXYZ/GAX-Chats/releases/latest" target="_blank">Download</a>
+    <div class="apk-btn-wrap">
+      <div class="apk-pulse"></div>
+      <a class="apk-btn"
+         href="https://github.com/GamerArnabXYZ/GAX-Chats/releases/latest"
+         target="_blank"
+         rel="noopener noreferrer">
+        <svg class="dl-icon" viewBox="0 0 14 14">
+          <line x1="7" y1="1" x2="7" y2="9"/>
+          <polyline points="3.5,6 7,9.5 10.5,6"/>
+          <line x1="1" y1="12" x2="13" y2="12"/>
+        </svg>
+        Download APK
+      </a>
+    </div>
   </div>
 
   <script>
-    // Particle Generation
+    // Particles
     (function() {
       const c = document.getElementById('particles');
-      const clrs = ['#7C5CFC','#00D4FF','#B044FF'];
-      for (let i = 0; i < 15; i++) {
+      const clrs = ['#7C5CFC','#00D4FF','#B044FF','#00E5A0'];
+      for (let i = 0; i < 18; i++) {
         const p = document.createElement('div');
         p.className = 'particle';
         const s = Math.random() * 4 + 2;
-        p.style.cssText = `width:${s}px;height:${s}px;left:${Math.random()*100}%;bottom:0%;background:${clrs[Math.floor(Math.random()*clrs.length)]};--dur:${(Math.random()*3+2).toFixed(1)}s;--delay:${(Math.random()*4).toFixed(1)}s;`;
+        p.style.cssText = `width:${s}px;height:${s}px;left:${Math.random()*100}%;bottom:${Math.random()*30}%;background:${clrs[Math.floor(Math.random()*clrs.length)]};--dur:${(Math.random()*3+2).toFixed(1)}s;--delay:${(Math.random()*4).toFixed(1)}s;box-shadow:0 0 ${s*3}px ${clrs[Math.floor(Math.random()*clrs.length)]};`;
         c.appendChild(p);
       }
     })();
 
+    // Progress steps
     const bar = document.getElementById('progress-bar');
     const lbl = document.getElementById('progress-label');
+    const steps = [
+      {pct:15, txt:'Initializing…'},
+      {pct:35, txt:'Loading Firebase…'},
+      {pct:60, txt:'Setting up…'},
+      {pct:80, txt:'Almost ready…'},
+      {pct:95, txt:'Starting app…'},
+    ];
     let si = 0;
-    const steps = [15, 35, 60, 85, 95];
     const tick = setInterval(() => {
-      if (si < steps.length) { 
-        bar.style.width = steps[si] + '%';
-        si++;
-      }
-    }, 1000);
+      if (si < steps.length) { bar.style.width = steps[si].pct+'%'; lbl.textContent = steps[si].txt; si++; }
+      else clearInterval(tick);
+    }, 600);
 
-    // iOS 12 Friendly Event Listener
-    window.addEventListener('load', function() {
-        // Flutter engine will signal when ready
-        // We also check for 'flutter-first-frame' if supported
-        window.addEventListener('flutter-first-frame', function() {
-          clearInterval(tick);
-          bar.style.width = '100%';
-          setTimeout(function() { 
-            var loader = document.getElementById('gax-loader');
-            if(loader) loader.classList.add('hidden');
-          }, 500);
-        });
+    // Flutter ready event
+    window.addEventListener('flutter-first-frame', () => {
+      clearInterval(tick);
+      bar.style.width = '100%';
+      lbl.textContent = 'Ready!';
+      setTimeout(() => document.getElementById('gax-loader').classList.add('hidden'), 350);
     });
 
-    // Final Fallback: Force hide loader after 15 seconds regardless
-    setTimeout(function() {
-      var loader = document.getElementById('gax-loader');
-      if(loader && !loader.classList.contains('hidden')) {
-        loader.classList.add('hidden');
-      }
-    }, 15000);
+    // Fallback 12s
+    setTimeout(() => document.getElementById('gax-loader').classList.add('hidden'), 12000);
   </script>
 
   <script src="flutter_bootstrap.js" async></script>
