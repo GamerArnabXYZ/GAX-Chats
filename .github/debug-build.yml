@@ -1,4 +1,4 @@
-name: 🔨 Release APK & Web Build
+name: 🔨 Release APK Build
 
 on:
   push:
@@ -32,9 +32,6 @@ jobs:
 
       - name: 📦 Get Dependencies
         run: flutter pub get
-        
-      - name: 🌐 Enable Web Support
-        run: flutter create . --platforms web --project-name gax_forge
 
       - name: 🔍 Analyze Code
         run: flutter analyze --no-fatal-infos
@@ -60,16 +57,3 @@ jobs:
           files: |
             build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
             build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-            
-      - name: 🔨 Build Web
-        run: |
-          flutter build web --release \
-            --web-renderer html \
-            --base-href "/${{ github.event.repository.name }}/"
-            
-      - name: 🚀 Deploy to Web Branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/web
-          publish_branch: web
