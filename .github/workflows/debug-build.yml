@@ -33,9 +33,6 @@ jobs:
       - name: 📦 Get Dependencies
         run: flutter pub get
         
-      - name: 🌐 Enable Web Support
-        run: flutter create . --platforms web --project-name gax_forge
-
       - name: 🔍 Analyze Code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
