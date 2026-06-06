@@ -477,7 +477,7 @@ class _PSState extends State<ProfileSetup> {
       // This prevents the StreamBuilder from flickering
     } catch (e) {
       debugPrint('Profile save error: $e');
-      if (mounted) setState(() { _busy = false; _err = 'Failed to save. Check connection.'; });
+      if (mounted) setState(() { _busy = false; _err = 'Failed: $e'; });
       return;
     }
     if (mounted) {
