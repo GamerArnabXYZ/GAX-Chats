@@ -27385,8 +27385,7 @@ _.c=null},
 aqU:function aqU(a){this.a=a},
 aqV:function aqV(a){this.a=a},
 aqW:function aqW(a){this.a=a},
-aqX:function aqX(a,b){this.a=a
-this.b=b},
+aqX:function aqX(a){this.a=a},
 aqY:function aqY(a){this.a=a},
 zH:function zH(a,b){this.c=a
 this.a=b},
@@ -89940,7 +89939,7 @@ case 4:p=3
 e=o
 j=A.aa(e)
 A.bM().$1("Profile save error: "+A.e(j))
-if(n.c!=null)n.W(new A.aqX(n,j))
+if(n.c!=null)n.W(new A.aqX(n))
 s=1
 break
 s=6
@@ -89978,7 +89977,7 @@ $S:0}
 A.aqX.prototype={
 $0(){var s=this.a
 s.r=!1
-s.w="Failed: "+A.e(this.b)},
+s.w="Failed to save. Check connection."},
 $S:0}
 A.aqY.prototype={
 $0(){return this.a.r=!1},
