@@ -1211,9 +1211,14 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         const SizedBox(height: 22),
         _GaxBtn(onTap: () {
           if (n.text.trim().isEmpty || u.text.trim().isEmpty) return;
+          final pfp = p.text.trim();
+          if (pfp.isNotEmpty && !pfp.startsWith('https://')) {
+            _showErrorSnackbar(c, 'PFP URL must start with https://');
+            return;
+          }
           FirebaseDatabase.instance.ref('users/${widget.d['uid']}').update({
             'name': n.text.trim(), 'username': u.text.trim().toLowerCase(),
-            'pfp': p.text.trim().isEmpty ? (widget.d['pfp'] ?? '') : p.text.trim(),
+            'pfp': pfp.isEmpty ? (widget.d['pfp'] ?? '') : pfp,
             'bio': b.text.trim(),
           }).catchError(_showError(c, 'Failed to update profile'));
           Navigator.pop(c);
