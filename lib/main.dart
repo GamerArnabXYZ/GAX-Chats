@@ -1825,6 +1825,7 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
         Expanded(child: StreamBuilder(
           stream: FirebaseDatabase.instance.ref('messages/$chatId').limitToLast(100).onValue,
           builder: (ctx, snap) {
+            if (snap.hasError) return Center(child: Text('Error: ${snap.error}', style: const TextStyle(color: Gx.rose)));
             if (!snap.hasData || snap.data!.snapshot.value == null)
               return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                 TweenAnimationBuilder<double>(tween: Tween(begin: 0.0, end: 1.0),
