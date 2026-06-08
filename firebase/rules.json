@@ -55,7 +55,7 @@
 
     "messages": {
       "$chatId": {
-        ".read":  "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('chats').child($chatId).child('members').child(auth.uid).exists() || newData.parent().child('chats').child($chatId).child('members').child(auth.uid).exists())",
+        ".read":  "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('chats').child($chatId).child('members').child(auth.uid).exists() || $chatId.contains(auth.uid))",
         ".write": false,
         "$msgId": {
           ".write":    "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('chats').child($chatId).child('members').child(auth.uid).exists() || newData.parent().parent().child('chats').child($chatId).child('members').child(auth.uid).exists())",
