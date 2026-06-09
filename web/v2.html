@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GAX Chats Lite (v2)</title>
+  <meta name="theme-color" content="#070814">
+  <link rel="icon" type="image/png" href="favicon.png">
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --v: #7C5CFC; --c: #00D4FF; --d0: #030308; --d1: #070814; --d2: #0A0B1C;
+      --d3: #0E0F26; --d4: #141630; --tx1: #F5F5FF; --tx2: #8A8AB8; --err: #FF4D80;
+      --mint: #00E5A0; --sent: #1E1A5F; --recv: #12132D;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--d0); color: var(--tx1);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+    }
+    
+    /* Utility */
+    .hidden { display: none !important; }
+    .btn {
+      background: linear-gradient(135deg, var(--v), var(--c));
+      color: white; border: none; padding: 12px 24px; border-radius: 14px;
+      font-weight: 800; cursor: pointer; transition: transform 0.2s;
+      box-shadow: 0 4px 15px rgba(124, 92, 252, 0.3);
+    }
+    .btn:active { transform: scale(0.96); }
+    .input {
+      background: var(--d4); border: 1px solid rgba(124, 92, 252, 0.15);
+      color: var(--tx1); padding: 14px 18px; border-radius: 14px;
+      outline: none; width: 100%; font-size: 15px;
+    }
+    .input:focus { border-color: var(--v); }
+
+    /* Layouts */
+    #auth-screen, #profile-screen, #main-screen { height: 100%; display: flex; flex-direction: column; }
+    .scrollable { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    
+    /* Header */
+    header {
+      background: var(--d3); padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10;
+    }
+    header h1 { font-size: 18px; font-weight: 900; letter-spacing: 0.5px; }
+
+    /* Auth UI */
+    .center-box { margin: auto; width: 90%; max-width: 400px; padding: 24px; background: var(--d3); border-radius: 24px; border: 1px solid rgba(124, 92, 252, 0.2); }
+    .auth-tabs { display: flex; gap: 10px; margin-bottom: 24px; }
+    .tab { flex: 1; text-align: center; padding: 10px; color: var(--tx2); font-weight: 700; cursor: pointer; border-bottom: 2px solid transparent; }
+    .tab.active { color: var(--v); border-color: var(--v); }
+
+    /* Chat List */
+    .chat-item {
+      padding: 14px 20px; display: flex; align-items: center; gap: 14px;
+      border-bottom: 1px solid var(--d4); cursor: pointer;
+    }
+    .chat-item:active { background: var(--d2); }
+    .avi { width: 50px; height: 50px; border-radius: 16px; background: var(--d4); object-fit: cover; border: 1.5px solid rgba(124, 92, 252, 0.2); }
+    .chat-info { flex: 1; min-width: 0; }
+    .chat-name { font-weight: 700; margin-bottom: 3px; font-size: 15px; }
+    .chat-sub { font-size: 12.5px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Chat Room */
+    #chat-room {
+      position: fixed; inset: 0; background: var(--d1);
+      display: flex; flex-direction: column; z-index: 100;
+      transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #chat-room.active { transform: translateX(0); }
+    .room-header { background: var(--d3); padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+    .back-btn { font-size: 24px; padding: 8px; color: var(--v); cursor: pointer; }
+    
+    .msgs-list { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+    .bubble { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 14.5px; line-height: 1.4; position: relative; }
+    .bubble.me {
+      align-self: flex-end; background: linear-gradient(135deg, var(--sent), #2a258a);
+      border-bottom-right-radius: 4px; border: 0.5px solid rgba(124, 92, 252, 0.3);
+    }
+    .bubble.them {
+      align-self: flex-start; background: var(--recv);
+      border-bottom-left-radius: 4px; border: 0.5px solid rgba(124, 92, 252, 0.1);
+    }
+    .msg-ts { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px; display: block; text-align: right; }
+
+    .room-input {
+      background: var(--d3); padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+      border-top: 1px solid var(--d4);
+    }
+    #msg-in { background: var(--d4); border-radius: 20px; padding: 10px 16px; border: none; color: white; flex: 1; outline: none; }
+    .send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--v); border: none; color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+
+    /* Profile Setup */
+    .profile-box { text-align: center; padding: 40px 20px; }
+    
+    /* Loading */
+    #loader { position: fixed; inset: 0; background: var(--d0); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(124, 92, 252, 0.2); border-top-color: var(--v); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div id="loader"><div class="spinner"></div></div>
+
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen" class="hidden">
+    <div class="center-box">
+      <h1 style="text-align:center; margin-bottom: 30px; color: var(--v)">GAX v2 LITE</h1>
+      <div class="auth-tabs">
+        <div id="tab-login" class="tab active" onclick="switchAuth(true)">Login</div>
+        <div id="tab-signup" class="tab" onclick="switchAuth(false)">Signup</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <input type="email" id="email" class="input" placeholder="Email Address">
+        <input type="password" id="pass" class="input" placeholder="Password">
+        <button class="btn" onclick="handleAuth()" id="auth-btn">Log In</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE SCREEN -->
+  <div id="profile-screen" class="hidden">
+    <header><h1>Setup Profile</h1></header>
+    <div class="scrollable profile-box">
+      <div style="display:flex; flex-direction:column; gap:20px; max-width:400px; margin:0 auto;">
+        <input type="text" id="p-name" class="input" placeholder="Display Name">
+        <input type="text" id="p-user" class="input" placeholder="Username (lowercase, 3-20 chars)">
+        <button class="btn" onclick="saveProfile()">Start Chatting</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN SCREEN -->
+  <div id="main-screen" class="hidden">
+    <header>
+      <h1>GAX LITE</h1>
+      <button onclick="auth.signOut()" style="background:none; border:none; color:var(--tx2); font-weight:700">Logout</button>
+    </header>
+    <div id="chat-list" class="scrollable">
+      <!-- Chats load here -->
+    </div>
+  </div>
+
+  <!-- CHAT ROOM -->
+  <div id="chat-room">
+    <div class="room-header">
+      <div class="back-btn" onclick="closeChat()">←</div>
+      <img id="room-avi" class="avi" style="width:36px; height:36px; border-radius:10px;">
+      <div class="chat-info">
+        <div id="room-name" class="chat-name">Name</div>
+        <div id="room-status" style="font-size:11px; color:var(--mint)">Online</div>
+      </div>
+    </div>
+    <div id="msgs" class="msgs-list">
+      <!-- Messages load here -->
+    </div>
+    <div class="room-input">
+      <input type="text" id="msg-in" placeholder="Type message...">
+      <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <script>
+    const config = {
+      apiKey: "AIzaSyCDxsFZBoEG-WJkN-2wuD_U5DCotgEXZkc",
+      appId: "1:354112198175:web:e40eb50c44aac27c37a72a",
+      messagingSenderId: "354112198175",
+      projectId: "gax-chatapp",
+      databaseURL: "https://gax-chatapp-default-rtdb.asia-southeast1.firebasedatabase.app",
+    };
+
+    firebase.initializeApp(config);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    let myId = null;
+    let myData = null;
+    let activeChatId = null;
+    let isLoginMode = true;
+
+    // UI Navigation
+    function showScreen(id) {
+      ['auth-screen', 'profile-screen', 'main-screen', 'loader'].forEach(s => {
+        document.getElementById(s).classList.toggle('hidden', s !== id);
+      });
+    }
+
+    function switchAuth(login) {
+      isLoginMode = login;
+      document.getElementById('tab-login').classList.toggle('active', login);
+      document.getElementById('tab-signup').classList.toggle('active', !login);
+      document.getElementById('auth-btn').innerText = login ? 'Log In' : 'Sign Up';
+    }
+
+    // Auth Logic
+    async function handleAuth() {
+      const e = document.getElementById('email').value.trim();
+      const p = document.getElementById('pass').value.trim();
+      if(!e || !p) return alert('Fill all fields');
+      try {
+        if(isLoginMode) await auth.signInWithEmailAndPassword(e, p);
+        else await auth.createUserWithEmailAndPassword(e, p);
+      } catch(err) { alert(err.message); }
+    }
+
+    auth.onAuthStateChanged(user => {
+      if(user) {
+        myId = user.uid;
+        checkProfile();
+      } else {
+        myId = null;
+        showScreen('auth-screen');
+      }
+    });
+
+    async function checkProfile() {
+      const snap = await db.ref('users/' + myId).get();
+      if(snap.exists()) {
+        myData = snap.val();
+        loadChatList();
+        showScreen('main-screen');
+        setPresence();
+      } else {
+        showScreen('profile-screen');
+      }
+    }
+
+    async function saveProfile() {
+      const name = document.getElementById('p-name').value.trim();
+      const user = document.getElementById('p-user').value.trim().toLowerCase();
+      if(name.length < 1 || user.length < 3) return alert('Invalid inputs');
+      
+      try {
+        await db.ref('users/' + myId).set({
+          uid: myId, name, username: user,
+          pfp: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name) + '&background=0C0D1E&color=7C5CFC&bold=true',
+          createdAt: Date.now()
+        });
+        checkProfile();
+      } catch(err) { alert(err.message); }
+    }
+
+    // Presence
+    function setPresence() {
+      const ref = db.ref('users/' + myId + '/status');
+      ref.set('online');
+      ref.onDisconnect().set('offline');
+      db.ref('users/' + myId + '/lastSeen').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+    }
+
+    // Chat List
+    function loadChatList() {
+      const listDiv = document.getElementById('chat-list');
+      db.ref('chats').orderByChild('updatedAt').on('value', snap => {
+        listDiv.innerHTML = '';
+        const chats = [];
+        snap.forEach(child => {
+          const c = child.val();
+          if(c.members && c.members[myId]) {
+            chats.push({id: child.key, ...c});
+          }
+        });
+        
+        chats.reverse().forEach(c => {
+          const otherId = Object.keys(c.members).find(id => id !== myId);
+          db.ref('users/' + otherId).once('value', uSnap => {
+            const u = uSnap.val();
+            const item = document.createElement('div');
+            item.className = 'chat-item';
+            item.onclick = () => openChat(c.id, u);
+            item.innerHTML = `
+              <img src="${u.pfp || ''}" class="avi" onerror="this.src='https://ui-avatars.com/api/?name=?'">
+              <div class="chat-info">
+                <div class="chat-name">${u.name}</div>
+                <div class="chat-sub">${c.lastMsg || 'No messages yet'}</div>
+              </div>
+            `;
+            listDiv.appendChild(item);
+          });
+        });
+      });
+    }
+
+    // Chat Room Logic
+    function openChat(chatId, target) {
+      activeChatId = chatId;
+      document.getElementById('room-name').innerText = target.name;
+      document.getElementById('room-avi').src = target.pfp;
+      document.getElementById('chat-room').classList.add('active');
+      
+      // Load Messages
+      const msgsDiv = document.getElementById('msgs');
+      db.ref('messages/' + chatId).limitToLast(50).on('value', snap => {
+        msgsDiv.innerHTML = '';
+        snap.forEach(child => {
+          const m = child.val();
+          const isMe = m.senderId === myId;
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble ' + (isMe ? 'me' : 'them');
+          bubble.innerHTML = `
+            ${m.text}
+            <span class="msg-ts">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+          `;
+          msgsDiv.appendChild(bubble);
+        });
+        msgsDiv.scrollTop = msgsDiv.scrollHeight;
+      });
+    }
+
+    function closeChat() {
+      document.getElementById('chat-room').classList.remove('active');
+      if(activeChatId) db.ref('messages/' + activeChatId).off();
+      activeChatId = null;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('msg-in');
+      const text = input.value.trim();
+      if(!text || !activeChatId) return;
+      
+      const payload = {
+        senderId: myId,
+        text: text,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        type: 'text'
+      };
+      
+      input.value = '';
+      try {
+        await db.ref('messages/' + activeChatId).push(payload);
+        await db.ref('chats/' + activeChatId).update({
+          lastMsg: text,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+      } catch(err) { console.error(err); }
+    }
+
+    // Enter to send
+    document.getElementById('msg-in').onkeydown = e => { if(e.key === 'Enter') sendMessage(); };
+
+  </script>
+</body>
+</html>
