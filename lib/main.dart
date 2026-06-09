@@ -1441,12 +1441,15 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
     _typingTimer = Timer(const Duration(seconds: 2), () =>
       FirebaseDatabase.instance.ref('typing/$chatId/$myId').set(false).catchError((e) => debugPrint('Typing off: $e')));
   }
-  void _toBottom() {
+  void _toBottom({bool force = false}) {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_scroll.hasClients) return;
-      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 100)
-        _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+      final max = _scroll.position.maxScrollExtent;
+      final cur = _scroll.position.pixels;
+      if (force || cur >= max - 200) {
+        _scroll.animateTo(max, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+      }
     });
   }
   Future<void> _send() async {
@@ -1845,7 +1848,11 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
             }).toList();
             msgs.sort((a, b) => ((a['timestamp'] ?? 0) as num).compareTo((b['timestamp'] ?? 0) as num));
             if (_srchQ.isNotEmpty) msgs = msgs.where((m) => (m['text'] ?? '').toString().toLowerCase().contains(_srchQ)).toList();
-            if (msgs.length != _lastMsgCount) { _lastMsgCount = msgs.length; _toBottom(); }
+            if (msgs.length != _lastMsgCount) { 
+              bool isFirst = _lastMsgCount == 0;
+              _lastMsgCount = msgs.length; 
+              _toBottom(force: isFirst); 
+            }
             return ListView.builder(
               controller: _scroll,
               physics: const BouncingScrollPhysics(),
