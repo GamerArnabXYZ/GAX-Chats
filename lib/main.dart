@@ -14,51 +14,51 @@ Future<void> _openUrl(String raw) async {
   if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
 }
 class Gx {
-  static const d0 = Color(0xFF05050E);
-  static const d1 = Color(0xFF080916);
-  static const d2 = Color(0xFF0C0D1E);
-  static const d3 = Color(0xFF111228);
-  static const d4 = Color(0xFF171933);
-  static const d5 = Color(0xFF1F2142);
-  static const d6 = Color(0xFF262950);
-  static const l0 = Color(0xFFF7F7FF);
+  static const d0 = Color(0xFF030308);
+  static const d1 = Color(0xFF070814);
+  static const d2 = Color(0xFF0A0B1C);
+  static const d3 = Color(0xFF0E0F26);
+  static const d4 = Color(0xFF141630);
+  static const d5 = Color(0xFF1B1E3C);
+  static const d6 = Color(0xFF222548);
+  static const l0 = Color(0xFFF8F9FE);
   static const l1 = Color(0xFFFFFFFF);
-  static const l2 = Color(0xFFEEEEFB);
-  static const l3 = Color(0xFFE4E4F6);
-  static const l4 = Color(0xFFD8D8F0);
+  static const l2 = Color(0xFFF0F2FA);
+  static const l3 = Color(0xFFE6E9F4);
+  static const l4 = Color(0xFFDBDFEE);
   static const violet = Color(0xFF7C5CFC);
   static const cyan   = Color(0xFF00D4FF);
   static const indigo = Color(0xFF4535CC);
   static const mint   = Color(0xFF00E5A0);
   static const rose   = Color(0xFFFF4D80);
   static const amber  = Color(0xFFFFB340);
-  static const sentD  = Color(0xFF1A1650);
-  static const recvD  = Color(0xFF0F1024);
-  static const sentL  = Color(0xFFEDE8FF);
+  static const sentD  = Color(0xFF1E1A5F);
+  static const recvD  = Color(0xFF12132D);
+  static const sentL  = Color(0xFFE8E1FF);
   static const recvL  = Color(0xFFFFFFFF);
-  static const tx1  = Color(0xFFF0F0FF);
-  static const tx2  = Color(0xFF7878A8);
-  static const tx3  = Color(0xFF3C3D62);
-  static const tx1L = Color(0xFF080916);
-  static const tx2L = Color(0xFF5A5A88);
-  static const tx3L = Color(0xFF9090C0);
+  static const tx1  = Color(0xFFF5F5FF);
+  static const tx2  = Color(0xFF8A8AB8);
+  static const tx3  = Color(0xFF4A4B7A);
+  static const tx1L = Color(0xFF0A0B1C);
+  static const tx2L = Color(0xFF6A6A98);
+  static const tx3L = Color(0xFFA0A0C8);
   static const live    = Color(0xFF2EFF9A);
-  static const away    = Color(0xFF3A3D60);
+  static const away    = Color(0xFF444868);
   static const readClr = Color(0xFF00D4FF);
   static const err     = Color(0xFFFF4D80);
-  static const divD = Color(0xFF141630);
-  static const divL = Color(0xFFDDDDF4);
+  static const divD = Color(0xFF1A1C38);
+  static const divL = Color(0xFFE2E2F0);
   static const navL = Color(0xFFFFFFFF);
-  static const navD = Color(0xFF0C0D1E);
+  static const navD = Color(0xFF090A1A);
   static const gBrand = LinearGradient(colors: [violet, cyan],   begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const gBrand2 = LinearGradient(colors: [violet, Color(0xFFB044FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const gDeep  = LinearGradient(colors: [Color(0xFF080916), Color(0xFF05050E)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
-  static const gHdr   = LinearGradient(colors: [Color(0xFF130F40), Color(0xFF080916)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const gLHdr  = LinearGradient(colors: [Color(0xFF6040E8), Color(0xFF8560FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const gCard  = LinearGradient(colors: [Color(0xFF1F2142), Color(0xFF171933)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static List<BoxShadow> glow(Color c, {double b = 20, double s = -2}) => [BoxShadow(color: c.withOpacity(0.30), blurRadius: b, spreadRadius: s)];
-  static List<BoxShadow> glow2(Color c) => [BoxShadow(color: c.withOpacity(0.18), blurRadius: 28, spreadRadius: -4, offset: const Offset(0, 8))];
-  static List<BoxShadow> softShadow(bool dark) => [BoxShadow(color: Colors.black.withOpacity(dark ? 0.30 : 0.10), blurRadius: 12, offset: const Offset(0, 3))];
+  static const gBrand2 = LinearGradient(colors: [Color(0xFF8E75FF), Color(0xFF00D4FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const gDeep  = LinearGradient(colors: [Color(0xFF070814), Color(0xFF030308)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
+  static const gHdr   = LinearGradient(colors: [Color(0xFF1A1650), Color(0xFF070814)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const gLHdr  = LinearGradient(colors: [Color(0xFF7C5CFC), Color(0xFF9E85FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const gCard  = LinearGradient(colors: [Color(0xFF1B1E3C), Color(0xFF141630)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static List<BoxShadow> glow(Color c, {double b = 24, double s = -4}) => [BoxShadow(color: c.withOpacity(0.35), blurRadius: b, spreadRadius: s)];
+  static List<BoxShadow> glow2(Color c) => [BoxShadow(color: c.withOpacity(0.22), blurRadius: 32, spreadRadius: -6, offset: const Offset(0, 10))];
+  static List<BoxShadow> softShadow(bool dark) => [BoxShadow(color: Colors.black.withOpacity(dark ? 0.35 : 0.08), blurRadius: 16, offset: const Offset(0, 4))];
 }
 ThemeData gaxTheme(bool dark) {
   final bg   = dark ? Gx.d1 : Gx.l0;
@@ -70,6 +70,7 @@ ThemeData gaxTheme(bool dark) {
     useMaterial3: true,
     brightness: dark ? Brightness.dark : Brightness.light,
     scaffoldBackgroundColor: bg,
+    fontFamily: 'Segoe UI',
     colorScheme: ColorScheme.fromSeed(seedColor: Gx.violet, brightness: dark ? Brightness.dark : Brightness.light)
         .copyWith(primary: Gx.violet, secondary: Gx.cyan, surface: surf, error: Gx.err),
     appBarTheme: AppBarTheme(
@@ -77,26 +78,29 @@ ThemeData gaxTheme(bool dark) {
       foregroundColor: Colors.white, elevation: 0, scrolledUnderElevation: 0, centerTitle: false,
       systemOverlayStyle: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
         systemNavigationBarColor: dark ? Gx.navD : Gx.navL,
         systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
       ),
-      titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: 0.1),
-      iconTheme: const IconThemeData(color: Colors.white),
+      titleTextStyle: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: 0.2),
+      iconTheme: const IconThemeData(color: Colors.white, size: 22),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true, fillColor: fill,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Gx.violet, width: 1.6)),
-      hintStyle: TextStyle(color: tx2, fontSize: 14),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Gx.violet, width: 1.8)),
+      hintStyle: TextStyle(color: tx2, fontSize: 14, fontWeight: FontWeight.w500),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
     ),
-    listTileTheme: ListTileThemeData(textColor: tx1, iconColor: tx2),
-    dividerTheme: DividerThemeData(color: dark ? Gx.divD : Gx.divL, thickness: 0.6),
+    listTileTheme: ListTileThemeData(textColor: tx1, iconColor: tx2, contentPadding: const EdgeInsets.symmetric(horizontal: 16)),
+    dividerTheme: DividerThemeData(color: dark ? Gx.divD : Gx.divL, thickness: 0.8),
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Gx.violet : Colors.grey),
-      trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Gx.violet.withOpacity(0.4) : Colors.grey.withOpacity(0.3)),
+      thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Gx.violet : (dark ? Gx.tx3 : Gx.tx3L)),
+      trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Gx.violet.withOpacity(0.4) : Colors.grey.withOpacity(0.2)),
+    ),
+    cardTheme: CardTheme(
+      color: surf, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
   );
 }
@@ -1844,9 +1848,11 @@ class _ChatState extends State<ChatRoom> with TickerProviderStateMixin {
             if (msgs.length != _lastMsgCount) { _lastMsgCount = msgs.length; _toBottom(); }
             return ListView.builder(
               controller: _scroll,
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               itemCount: msgs.length,
+              cacheExtent: 1000,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               itemBuilder: (ctx, i) {
                 final m  = msgs[i]; final isMe = m['senderId'] == myId;
                 final ts = m['timestamp'] is int ? DateTime.fromMillisecondsSinceEpoch(m['timestamp'] as int) : DateTime.now();
@@ -1948,24 +1954,26 @@ class _BubbleWidget extends StatelessWidget {
   @override
   Widget build(BuildContext ctx) {
     final bg   = isMe ? (dark ? Gx.sentD : Gx.sentL) : (dark ? Gx.recvD : Gx.recvL);
-    final tx   = isMe ? (dark ? Gx.tx1 : const Color(0xFF1A0E60)) : (dark ? Gx.tx1 : Gx.tx1L);
-    final tsTx = isMe ? (dark ? Gx.tx2 : const Color(0xFF6050A0)) : (dark ? Gx.tx2 : Gx.tx2L);
+    final tx   = isMe ? (dark ? Gx.tx1 : const Color(0xFF150A50)) : (dark ? Gx.tx1 : Gx.tx1L);
+    final tsTx = isMe ? (dark ? Gx.tx2.withOpacity(0.7) : const Color(0xFF7060A0)) : (dark ? Gx.tx2 : Gx.tx2L);
+    final hasTail = true; // Always has tail for now
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
         onLongPress: onLongPress, onDoubleTap: onDoubleTap,
         child: RepaintBoundary(child: Container(
-          margin: EdgeInsets.only(bottom: 3, top: 3, left: isMe ? 64 : 0, right: isMe ? 0 : 64),
+          margin: EdgeInsets.only(bottom: 2.5, top: 2.5, left: isMe ? 58 : 0, right: isMe ? 0 : 58),
           child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
             Container(
               decoration: BoxDecoration(
-                color: bg,
+                gradient: isMe ? LinearGradient(colors: [bg, bg.withBlue(bg.blue + 15)], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
+                color: isMe ? null : bg,
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18), topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isMe ? 18 : 5), bottomRight: Radius.circular(isMe ? 5 : 18),
+                  topLeft: const Radius.circular(20), topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(isMe ? 20 : 6), bottomRight: Radius.circular(isMe ? 6 : 20),
                 ),
-                boxShadow: Gx.softShadow(dark),
-                border: isMe ? Border(left: BorderSide(color: Gx.violet.withOpacity(dark ? 0.55 : 0.35), width: 2.5)) : null,
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(dark ? 0.25 : 0.05), blurRadius: 10, offset: const Offset(0, 3))],
+                border: isMe ? null : Border.all(color: dark ? Gx.violet.withOpacity(0.12) : Gx.divL, width: 0.8),
               ),
               child: _BubbleBody(msg: msg, isMe: isMe, tx: tx, tsTx: tsTx, myId: myId, dark: dark),
             ),
@@ -2128,21 +2136,22 @@ class _MsgInput extends StatelessWidget {
     required this.onImage, required this.onLink, required this.onEmoji});
   @override
   Widget build(BuildContext ctx) => Container(
-    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-    decoration: BoxDecoration(color: dark ? Gx.d2 : Colors.white, border: Border(top: BorderSide(color: dark ? Gx.divD : Gx.divL, width: 0.6))),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    decoration: BoxDecoration(
+      color: dark ? Gx.d3 : Colors.white,
+      border: Border(top: BorderSide(color: dark ? Gx.divD : Gx.divL, width: 0.8)),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(dark ? 0.20 : 0.04), blurRadius: 12, offset: const Offset(0, -4))],
+    ),
     child: SafeArea(top: false, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      _iconBtn(Icons.image_outlined, onImage, dark),
+      _InBtn(icon: Icons.add_rounded, color: Gx.violet, onTap: onImage, dark: dark),
       const SizedBox(width: 6),
-      _iconBtn(null, onEmoji, dark, emoji: '😊'),
-      const SizedBox(width: 6),
-      _iconBtn(Icons.link_rounded, onLink, dark),
-      const SizedBox(width: 8),
       Expanded(child: Container(
-        constraints: const BoxConstraints(minHeight: 44),
-        decoration: BoxDecoration(color: dark ? Gx.d4 : Gx.l2, borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Gx.violet.withOpacity(dark ? 0.20 : 0.15))),
+        decoration: BoxDecoration(
+          color: dark ? Gx.d4 : Gx.l2, borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: dark ? Gx.violet.withOpacity(0.15) : Gx.divL, width: 1),
+        ),
         child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          const SizedBox(width: 14),
+          _InBtn(icon: Icons.emoji_emotions_outlined, color: dark ? Gx.tx2 : Gx.tx2L, onTap: onEmoji, dark: dark),
           Expanded(child: TextField(
             controller: ctrl, onChanged: onTyping, maxLines: 5, minLines: 1,
             style: TextStyle(color: dark ? Gx.tx1 : Gx.tx1L, fontSize: 15),
@@ -2150,42 +2159,36 @@ class _MsgInput extends StatelessWidget {
             decoration: InputDecoration(hintText: 'Message…', border: InputBorder.none,
               enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, filled: false,
               contentPadding: const EdgeInsets.symmetric(vertical: 11),
-              hintStyle: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L)),
+              hintStyle: TextStyle(color: dark ? Gx.tx2 : Gx.tx2L, fontWeight: FontWeight.w500)),
           )),
-          const SizedBox(width: 10),
+          _InBtn(icon: Icons.link_rounded, color: dark ? Gx.tx2 : Gx.tx2L, onTap: onLink, dark: dark),
         ]),
       )),
-      const SizedBox(width: 8),
-      AnimatedBuilder(
-        animation: sendAc,
-        builder: (_, child) {
-          final b = sendAc.value < 0.5 ? sendAc.value * 2 : (1 - sendAc.value) * 2;
-          return Transform.scale(scale: 1.0 + b * 0.22, child: child);
-        },
-        child: _TapScale(
-          onTap: hasText ? onSend : null,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 230), curve: Curves.easeOutBack,
-            width: hasText ? 46 : 44, height: hasText ? 46 : 44,
-            decoration: BoxDecoration(shape: BoxShape.circle,
-              gradient: hasText ? Gx.gBrand : null,
-              color: hasText ? null : (dark ? Gx.d4 : Gx.l2),
-              boxShadow: hasText ? Gx.glow(Gx.violet, b: 16) : []),
-            child: Icon(hasText ? Icons.send_rounded : Icons.mic_rounded, size: 20,
-              color: hasText ? Colors.white : (dark ? Gx.tx2 : Gx.tx2L)),
+      const SizedBox(width: 10),
+      _TapScale(
+        onTap: hasText ? onSend : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOutBack,
+          width: 48, height: 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: hasText ? Gx.gBrand : null,
+            color: hasText ? null : (dark ? Gx.d4 : Gx.l2),
+            boxShadow: hasText ? Gx.glow(Gx.violet, b: 16, s: -2) : [],
           ),
+          child: Icon(Icons.send_rounded, color: hasText ? Colors.white : (dark ? Gx.tx3 : Gx.tx3L), size: 22),
         ),
       ),
     ])),
   );
-  Widget _iconBtn(IconData? icon, VoidCallback onTap, bool dark, {String? emoji}) => _TapScale(
-    onTap: onTap,
-    child: Container(
-      width: 40, height: 40, margin: const EdgeInsets.only(bottom: 2),
-      decoration: BoxDecoration(shape: BoxShape.circle, color: dark ? Gx.d4 : Gx.l2,
-        border: Border.all(color: dark ? Gx.divD : Gx.divL, width: 0.8)),
-      child: emoji != null ? Center(child: Text(emoji, style: const TextStyle(fontSize: 20))) : Icon(icon, size: 19, color: dark ? Gx.tx2 : Gx.tx2L),
-    ),
+}
+class _InBtn extends StatelessWidget {
+  final IconData icon; final Color color; final VoidCallback onTap; final bool dark;
+  const _InBtn({required this.icon, required this.color, required this.onTap, required this.dark});
+  @override
+  Widget build(BuildContext ctx) => _TapScale(
+    onTap: () { HapticFeedback.selectionClick(); onTap(); },
+    child: Padding(padding: const EdgeInsets.all(8), child: Icon(icon, color: color, size: 24)),
   );
 }
 class _DateChip extends StatelessWidget {
